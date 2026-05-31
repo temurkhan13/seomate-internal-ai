@@ -1,0 +1,6374 @@
+{
+  "audit_id": "95a8c164-cf51-4eb6-8276-94cc8b5748c8",
+  "site_domain": "pixelettetech.com",
+  "taxonomy_version": "47872f06b860",
+  "captured_at": "2026-05-15T11:20:28.385728+00:00",
+  "status": "completed",
+  "total_variables": 226,
+  "variables": [
+    {
+      "variable_id": "P0-01",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "classifications_sample",
+        "confident_pct",
+        "fallback_count",
+        "intent_distribution",
+        "note",
+        "total_keywords"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "composition.intent_classifier"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-02",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "head_term_count",
+        "max_volume",
+        "meaningful_volume_count",
+        "median_volume",
+        "nonzero_volume_count",
+        "p75_volume",
+        "ranked_keywords_total",
+        "top_10_by_volume",
+        "total_monthly_opportunity",
+        "universe_provenance"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-03",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "easy_count",
+        "hard_count",
+        "kd_count",
+        "max_kd",
+        "median_kd",
+        "methodology",
+        "min_kd",
+        "thresholds"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-04",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "avg_cpc_usd",
+        "commercial_count",
+        "commercial_floor_usd",
+        "max_cpc_usd",
+        "median_cpc_usd",
+        "paid_count",
+        "total_keywords"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-05",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "feature_frequency_across_queries",
+        "note",
+        "per_keyword",
+        "queries_inspected"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.serp_feature_inventory"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-06",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "classifications_sample",
+        "confident_pct",
+        "mean_confidence",
+        "note",
+        "stage_distribution",
+        "stage_distribution_pct",
+        "total_keywords"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "composition.intent_classifier",
+        "composition.buyer_journey_classifier"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-07",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "band",
+        "embedded_pages",
+        "focus_score",
+        "interpretation",
+        "thresholds"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "composition.site_focus_score"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-08",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "band",
+        "embedded_pages",
+        "outlier_pages_sample",
+        "radius_max",
+        "radius_mean",
+        "radius_p95",
+        "thresholds"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "composition.site_radius"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-09",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "best_match",
+        "max_similarity",
+        "mean_similarity",
+        "median_similarity",
+        "min_similarity",
+        "offtopic_count",
+        "offtopic_queries",
+        "queries_evaluated",
+        "similarities_sample",
+        "worst_match"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "dataforseo_labs.ranked_keywords",
+        "composition.site_centroid_similarity"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-10",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "findings_sample",
+        "mismatches_count",
+        "mismatches_sample",
+        "queries_evaluated",
+        "queries_with_ranking_url",
+        "top1_match_pct",
+        "top3_match_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "dataforseo_labs.ranked_keywords",
+        "composition.page_query_similarity"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-11",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "cluster_count",
+        "clusters",
+        "embedded_pages",
+        "largest_cluster_size",
+        "pages_in_clusters",
+        "similarity_threshold",
+        "singleton_count",
+        "singletons"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "composition.threshold_clustering"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-12",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "cluster_findings",
+        "clusters_with_pillar",
+        "clusters_without_pillar",
+        "no_pillar_sample",
+        "total_clusters"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "http.html_fetch",
+        "composition.pillar_architecture"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-13",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "keywords_mapped",
+        "mapping_sample",
+        "pages_with_assignment",
+        "reverse_cannibalisation_count",
+        "reverse_cannibalisation_sample",
+        "universe_provenance"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "composition.keyword_to_page_mapping"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-14",
+      "status": "unmeasurable",
+      "pillar": "P0",
+      "value_keys": [
+        "future_approach",
+        "reason",
+        "status"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "config.audit.competitors",
+        "dataforseo.serp_google_organic"
+      ],
+      "errors": [
+        "deferred"
+      ]
+    },
+    {
+      "variable_id": "P0-15",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "brand",
+        "max_variant_volume",
+        "per_variant",
+        "total_monthly_brand_volume",
+        "trajectory_status",
+        "variants_queried"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.keywords_data.google_ads.search_volume"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-16",
+      "status": "failed",
+      "pillar": "P0",
+      "value_keys": [
+        "brand",
+        "domain_match_count",
+        "fuzzy_count",
+        "high_confidence_count",
+        "per_variant",
+        "variants_queried"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "google_kg.entities_search"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-17",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "borderline_pages",
+        "category_distribution",
+        "page_classifications_sample",
+        "pages_classified",
+        "pages_errored",
+        "ymyl_pages",
+        "ymyl_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.ymyl_classifier"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P0-18",
+      "status": "passed",
+      "pillar": "P0",
+      "value_keys": [
+        "aggregate_big_brand_pct",
+        "dominated_keywords",
+        "keywords_analysed",
+        "note",
+        "per_keyword",
+        "total_big_brand_slots",
+        "total_slots"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.big_brand_share_estimate"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-01",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "duplicate_title_clusters",
+        "indexable_pages",
+        "pages_audited"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.title_uniqueness_aggregation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-02",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "above_optimal_but_acceptable",
+        "in_optimal_pct",
+        "in_optimal_range",
+        "indexable_pages_with_title",
+        "thresholds",
+        "too_long_count",
+        "too_long_urls",
+        "too_short_count",
+        "too_short_urls"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.title_length_buckets"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-03",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "hits_sample",
+        "misses_sample",
+        "pages_with_kw_in_title",
+        "pages_with_target_keyword"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.keyword_inclusion"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-04",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "hits_sample",
+        "misses_sample",
+        "pages_checked",
+        "pages_with_kw_at_start",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.keyword_position"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-05",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "hits_sample",
+        "mean_score",
+        "median_score",
+        "misses_sample",
+        "pages_missing_score",
+        "pages_scored",
+        "well_aligned_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_on_page.instant_pages.title_to_content_consistency"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-06",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "absent_pct",
+        "brand_variants_checked",
+        "examples",
+        "homepage_placement",
+        "non_home_total",
+        "placement_counts_all",
+        "placement_counts_non_home",
+        "suffix_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_on_page.instant_pages",
+        "config.brand_identity",
+        "composition.title_brand_placement"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-07",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_missing_description"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-08",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "in_optimal_pct",
+        "in_optimal_range",
+        "indexable_pages_with_description",
+        "thresholds",
+        "too_long_count",
+        "too_long_urls",
+        "too_short_count",
+        "too_short_urls"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.description_length_buckets"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-09",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "hits_sample",
+        "misses_sample",
+        "pages_no_desc_count",
+        "pages_no_desc_sample",
+        "pages_with_desc_and_keyword",
+        "pages_with_kw_in_desc"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.keyword_inclusion"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-10",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "findings",
+        "max_snippet_chars",
+        "mean_snippet_chars",
+        "median_snippet_chars",
+        "min_snippet_chars",
+        "note",
+        "queries_we_dont_rank_on_count",
+        "queries_with_ranking_snippet",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.snippet_prefix_measurement"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-11",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_missing_h1"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-12",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_with_multiple_h1",
+        "pages_with_multiple_h1_detail"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-13",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "misses_sample",
+        "pages_no_h1_count",
+        "pages_no_h1_sample",
+        "pages_with_h1_and_target_keyword",
+        "pages_with_kw_in_h1"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.keyword_inclusion"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-14",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "avg_overlap_tokens_per_page",
+        "coverage_pct",
+        "hits_sample",
+        "misses_sample",
+        "no_subheadings_count",
+        "pages_with_overlap",
+        "pages_with_subheadings_and_keyword"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.keyword_token_overlap"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-15",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "page_findings_sample",
+        "pages_checked",
+        "pages_multi_h1",
+        "pages_no_h1",
+        "pages_with_empty_sections",
+        "pages_with_skipped_levels"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.heading_hierarchy_dom_walk"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-16",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "above_optimal_count",
+        "average_length",
+        "thresholds",
+        "urls_audited",
+        "very_long_count",
+        "very_long_urls"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "composition.url_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-17",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "hits_sample",
+        "homepages_skipped",
+        "loose_match_pct",
+        "loose_matches",
+        "misses_sample",
+        "non_home_pages_checked",
+        "strict_match_pct",
+        "strict_matches"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.ranked_keywords",
+        "dataforseo_on_page.instant_pages",
+        "composition.slug_keyword_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-18",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "total_violations",
+        "urls_audited"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        },
+        {
+          "id": 8,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "composition.url_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-19",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "average_depth",
+        "depth_histogram",
+        "max_depth",
+        "thresholds",
+        "too_deep_count",
+        "too_deep_urls",
+        "urls_audited"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "composition.url_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-20",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_canonicalising_elsewhere",
+        "pages_missing_canonical"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.canonical_self_reference_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-21",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "all_types_seen",
+        "page_findings",
+        "pages_total",
+        "pages_with_schema",
+        "pages_without_schema_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.schema_type_appropriateness"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-22",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "blocks_schema_org",
+        "blocks_total",
+        "multi_block_no_graph_count",
+        "non_absolute_url_count",
+        "pages_total",
+        "pages_with_parse_errors_count",
+        "recommended_property_gap_count",
+        "required_property_gap_count",
+        "unrecognised_type_block_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": false
+        },
+        {
+          "id": 8,
+          "passed": true
+        },
+        {
+          "id": 9,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "google.rich_results_required_properties_registry"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-23",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "avg_inbound",
+        "healthy_inbound_count",
+        "max_inbound",
+        "median_inbound",
+        "pages_at_zero_count",
+        "pages_below_floor_count",
+        "pages_in_graph",
+        "top_10_most_linked"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.link_graph_inbound_count"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-24",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "average_count",
+        "bottom_15_by_inbound_quality",
+        "high_authority_count",
+        "low_authority_count",
+        "mean_pagerank",
+        "pages_in_graph",
+        "thresholds",
+        "top_15_by_inbound_quality"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.pagerank_iteration",
+        "composition.inbound_link_quality_aggregation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-25",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "anchors_scored",
+        "avg_anchor_similarity",
+        "generic_anchor_pct",
+        "generic_count",
+        "inbound_total",
+        "per_target_sample",
+        "targets_below_floor_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "gemini.embed_content",
+        "composition.anchor_relevance"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-26",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "authority_share_pct",
+        "distinct_external_hosts",
+        "pages_with_authority_links",
+        "pages_with_spam_concentration",
+        "top_external_hosts",
+        "total_authority_links",
+        "total_external_links"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.outbound_link_quality"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-27",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "average_external_links",
+        "indexable_pages",
+        "max_external_links",
+        "pages_with_high_external_links",
+        "pages_with_zero_count",
+        "pages_with_zero_external_links"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-28",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "complete_alt_pct",
+        "missing_alt_sample",
+        "pages_complete_alt",
+        "pages_missing_alt",
+        "pages_with_images"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.image_alt_coverage_aggregation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-29",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "descriptive_images",
+        "descriptive_pct",
+        "generic_filename_examples",
+        "generic_images",
+        "total_images",
+        "worst_pages_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.image_filename_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-30",
+      "status": "partial",
+      "pillar": "P1",
+      "value_keys": [
+        "average_images_per_page",
+        "image_size_data_available",
+        "indexable_pages",
+        "max_images_on_a_page",
+        "note",
+        "very_image_heavy_pages"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": [
+        "images_size unpopulated; image-weight rule not evaluable"
+      ]
+    },
+    {
+      "variable_id": "P1-31",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_with_og_tags",
+        "pages_without_any_og_tags",
+        "rules_failed"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": false
+        },
+        {
+          "id": 6,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-32",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_relying_on_og_fallback",
+        "pages_with_explicit_twitter_tags",
+        "pages_with_invalid_twitter_card_type",
+        "pages_with_neither"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-33",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_with_robots_directive",
+        "robots_directives_sampled"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-34",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "average_word_count",
+        "in_optimal_range",
+        "indexable_pages",
+        "median_word_count",
+        "thin_content_count",
+        "thin_content_pages",
+        "thresholds"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-35",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "caveat",
+        "dominated_pct",
+        "findings_sample",
+        "kw_prominence_pct",
+        "pages_analysed",
+        "pages_dominated_by_few_terms",
+        "pages_with_kw_prominent",
+        "pages_with_target_kw"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.extract",
+        "composition.tfidf_in_site"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-36",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "findings_sample",
+        "mean_coverage",
+        "median_coverage",
+        "narrow_pages_count",
+        "note",
+        "pages_scored"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "dataforseo_labs.ranked_keywords",
+        "composition.semantic_neighbour_coverage"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-37",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "mean_coverage_pct",
+        "median_coverage_pct",
+        "note",
+        "pages_evaluated",
+        "weakest_pages"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.topic_depth_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-38",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "caveat",
+        "least_original_pages",
+        "low_originality_count",
+        "max_score",
+        "mean_score",
+        "median_score",
+        "min_score",
+        "pages_scored"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "gemini.embed_content",
+        "dataforseo_on_page.instant_pages.duplicate_content_check",
+        "composition.originality_score"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-41",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "article_pages_total",
+        "findings_sample",
+        "pages_with_either",
+        "pages_with_schema_date",
+        "pages_with_visible_byline_date"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "extruct.parse_structured_data",
+        "trafilatura.main_text",
+        "composition.byline_date_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-42",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "pages_with_either",
+        "pages_with_last_modified",
+        "pages_with_url_date",
+        "total_pages",
+        "url_date_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.syntactic_date_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-43",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "findings_sample",
+        "pages_with_semantic_date",
+        "pages_without_semantic_date",
+        "semantic_date_pct",
+        "substantive_pages"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "trafilatura.main_text",
+        "composition.semantic_date_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-44",
+      "status": "unmeasurable",
+      "pillar": "P1",
+      "value_keys": [
+        "applicability",
+        "baseline_captured",
+        "next_audit_unlocks",
+        "reason"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.extract",
+        "gemini.embed_content",
+        "composition.multi_snapshot_diff"
+      ],
+      "errors": [
+        "historical signal not yet available"
+      ]
+    },
+    {
+      "variable_id": "P1-45",
+      "status": "unmeasurable",
+      "pillar": "P1",
+      "value_keys": [
+        "method",
+        "next_audit_will_make_measurable",
+        "reason"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "composition.cross_audit_freshness_diff"
+      ],
+      "errors": [
+        "only one audit snapshot available"
+      ]
+    },
+    {
+      "variable_id": "P1-46",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "dup_content_count",
+        "dup_description_count",
+        "dup_title_count",
+        "total_indexable"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.duplicate_content_aggregation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-47",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "non_homepage_pages",
+        "page_findings",
+        "pages_with_breadcrumblist",
+        "pages_without_breadcrumblist",
+        "short_breadcrumb_pages",
+        "structural_violations"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": false
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": false
+        },
+        {
+          "id": 8,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.breadcrumblist_validation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-48",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "coverage_pct",
+        "hits_sample",
+        "no_list_sample",
+        "pages_with_list",
+        "substantive_pages",
+        "total_content_lists",
+        "total_li_items"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.list_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-49",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "anchor_id_pct",
+        "coverage_pct",
+        "hits_sample",
+        "long_form_pages",
+        "no_toc_sample",
+        "pages_with_anchor_ids",
+        "pages_with_toc"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.toc_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-50",
+      "status": "failed",
+      "pillar": "P1",
+      "value_keys": [
+        "image_only_sample",
+        "median_format_count",
+        "pages_evaluated",
+        "pages_image_only_count",
+        "pages_with_video",
+        "pages_with_video_pct",
+        "richest_pages_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.multimedia_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-51",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "interpretation_note",
+        "site_averages"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P1-52",
+      "status": "passed",
+      "pillar": "P1",
+      "value_keys": [
+        "indexable_pages",
+        "pages_with_misspellings"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-01",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "deferred_reason",
+        "directive_lines",
+        "robots_url",
+        "rules_deferred",
+        "rules_evaluated_at_h1a",
+        "sitemaps_declared",
+        "size_bytes"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 9,
+          "passed": true
+        },
+        {
+          "id": 10,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.fetch",
+        "composition.robots_txt_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-02",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "deferred_reason",
+        "rules_deferred",
+        "rules_evaluated_at_h1a",
+        "sitemap_url",
+        "size_bytes",
+        "url_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.fetch",
+        "composition.sitemap_xml_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-03",
+      "status": "unmeasurable",
+      "pillar": "P2",
+      "value_keys": [
+        "observable_proxy",
+        "reason",
+        "remediation_paths",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.sitemap_fetch",
+        "google_search_console.sitemaps (not wired)"
+      ],
+      "errors": [
+        "GSC OAuth not wired"
+      ]
+    },
+    {
+      "variable_id": "P2-04",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "fresh_count",
+        "fresh_threshold_days",
+        "max_age_days",
+        "median_age_days",
+        "min_age_days",
+        "p75_age_days",
+        "p95_age_days",
+        "stale_count",
+        "stale_threshold_days",
+        "urls_with_lastmod"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.sitemap_xml_fetch",
+        "composition.sitemap_lastmod_distribution"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-05",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "audited_pages",
+        "error_count",
+        "error_pct",
+        "error_urls_sample",
+        "infinite_space_pattern_count",
+        "infinite_space_patterns",
+        "measurement_scope",
+        "note",
+        "owner_data_remediation",
+        "rules_evaluated",
+        "rules_owner_data_required",
+        "see_also"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.link_graph_url_patterns"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-07",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "conflicts_sample",
+        "coverage_pct",
+        "no_canonical_count",
+        "no_canonical_sample",
+        "note",
+        "pages_checked",
+        "pages_consistent",
+        "sitemap_urls_known"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "dataforseo_on_page.instant_pages",
+        "sitemap.discover_urls",
+        "composition.link_graph",
+        "composition.canonical_conflict_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-08",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "worst_lab_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.lab",
+        "crux.field_data"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-09",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "source",
+        "worst_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "crux.field_data"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-10",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "worst_lab_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.lab",
+        "crux.field_data"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-11",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "worst_lab_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.lab",
+        "crux.field_data"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-12",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "worst_lab_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.lab"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-13",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "worst_lab_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.lab"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-14",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "per_run",
+        "thresholds",
+        "worst_band"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.performance_score"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-15",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "deprecated_signals_note",
+        "lighthouse_viewport_insight_pass",
+        "pages_checked",
+        "pages_incorrect_viewport",
+        "pages_missing_viewport",
+        "pages_with_correct_viewport"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "psi.runPagespeed",
+        "composition.viewport_meta_inspection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-16",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "avg_interaction_locked_per_page",
+        "avg_substantive_hidden_per_page",
+        "caveat",
+        "pages_evaluated",
+        "worst_hidden_sample",
+        "worst_interaction_locked_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.hidden_content_heuristic"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-17",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "accessibility_score",
+        "best_practices_score",
+        "performance_score",
+        "seo_score",
+        "url",
+        "viewport_insight_pass"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "psi.runPagespeed",
+        "lighthouse.categories.mobile"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-18",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "non_https_count",
+        "urls_audited"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "composition.url_scheme_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-19",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "min_max_age_seconds",
+        "page_findings_sample",
+        "pages_total",
+        "pages_with_hsts",
+        "pages_with_includesubdomains",
+        "pages_with_preload",
+        "pages_without_hsts_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.hsts_header_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-20",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "caveat",
+        "failed_status_sample",
+        "fetch_errored_count",
+        "measurement_type",
+        "non_2xx_count",
+        "reachable_pct_this_audit",
+        "remediation_for_full_measurement",
+        "successful",
+        "total_attempted"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.single_audit_reachability"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-21",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "asn",
+        "behind_cdn",
+        "cdn_detected",
+        "city",
+        "country",
+        "country_code",
+        "dns_error",
+        "host",
+        "ip",
+        "isp",
+        "note",
+        "organisation",
+        "region",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "socket.gethostbyname",
+        "http.ip_api_com",
+        "http.html_fetch.headers",
+        "composition.cdn_fingerprint"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-22",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "coverage_pct",
+        "failing_pages_sample",
+        "pages_evaluated",
+        "pages_passing",
+        "rendering_pattern"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "dataforseo_on_page.instant_pages",
+        "composition.ssr_csr_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-23",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "deep_pages",
+        "deep_pages_count",
+        "depth_distribution",
+        "max_depth",
+        "pages_in_graph",
+        "pages_reachable_from_homepage",
+        "unreachable_count",
+        "unreachable_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.link_graph_bfs"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-24",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "audited",
+        "fetch_failed",
+        "fetch_failed_urls",
+        "status_distribution",
+        "urls_in_sitemap"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-25",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "chain_length_distribution",
+        "deep_chain_count",
+        "failed_after_redirect_count",
+        "loop_count",
+        "pages_checked"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.redirect_chain_walker"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-26",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "note",
+        "pages_audited",
+        "pages_flagged_count",
+        "pages_flagged_with_broken_links"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-27",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "broken_count",
+        "broken_pct",
+        "broken_sample",
+        "checked",
+        "external_urls_total",
+        "fetch_error_count",
+        "fetch_error_sample",
+        "sampled"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.head_check",
+        "composition.external_link_status_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-28",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "no_inbound_count",
+        "orphan_count",
+        "orphans",
+        "pages_in_graph",
+        "unreachable_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.link_graph_orphan_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-29",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "note",
+        "pages_audited",
+        "pages_flagged_count",
+        "pages_flagged_with_broken_resources"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-30",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "above_optimal_but_acceptable",
+        "average_size_bytes",
+        "indexable_pages",
+        "max_size_bytes",
+        "thresholds",
+        "too_heavy_count",
+        "too_heavy_urls"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-31",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "modern_share_pct",
+        "page_findings_sample",
+        "pages_all_modern",
+        "pages_examined",
+        "pages_mostly_legacy",
+        "total_legacy",
+        "total_modern",
+        "total_unknown"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.image_format_distribution"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-32",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "findings_sample",
+        "pages_examined",
+        "pages_first_img_lazy",
+        "pages_image_heavy_no_lazy"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.lazy_loading_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-33",
+      "status": "unmeasurable",
+      "pillar": "P2",
+      "value_keys": [
+        "configured_locales",
+        "reason"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.html_fetch"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-36",
+      "status": "failed",
+      "pillar": "P2",
+      "value_keys": [
+        "adopted",
+        "homepage_meta_indexnow",
+        "key_file_probes",
+        "note",
+        "probe_errors",
+        "robots_mentions",
+        "signals_found"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.well_known_probe",
+        "http.robots_txt",
+        "composition.indexnow_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-37",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "caveat",
+        "clean_pages",
+        "clean_pct",
+        "pages_checked",
+        "pages_with_suspicious_count",
+        "pages_with_suspicious_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.interstitial_heuristic"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-38",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "caveat",
+        "clean_pages",
+        "clean_pct",
+        "findings_sample",
+        "pages_checked",
+        "pages_with_above_fold_ads"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.above_fold_ad_heuristic"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-39",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "amp_page_count",
+        "amp_pages_sample",
+        "amp_pct",
+        "note",
+        "pages_checked",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.amp_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-40",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "age_days",
+        "age_years",
+        "earliest_signal",
+        "host",
+        "note",
+        "rdap_error",
+        "registration_date",
+        "watchlist",
+        "wayback_error",
+        "wayback_first_snapshot"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "rdap.org",
+        "archive.org.wayback",
+        "composition.host_age_approximation"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-41",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "caveat",
+        "classification",
+        "month_distribution",
+        "updates_last_12m",
+        "updates_last_3m",
+        "updates_per_month_12m",
+        "updates_per_month_3m",
+        "urls_in_sitemap",
+        "urls_with_lastmod",
+        "urls_without_lastmod"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.sitemap_fetch",
+        "composition.sitemap_lastmod_cadence"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-42",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "changefreq_distribution",
+        "invalid_changefreq_count",
+        "invalid_priority_count",
+        "note",
+        "priority_distribution",
+        "total_urls_in_sitemap",
+        "urls_with_changefreq",
+        "urls_with_priority",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.sitemap_fetch",
+        "composition.sitemap_priority_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P2-43",
+      "status": "passed",
+      "pillar": "P2",
+      "value_keys": [
+        "rules_failed",
+        "urls_audited"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "composition.url_pattern_analysis"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-01",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "note",
+        "referring_domains_incl_subdomains",
+        "referring_main_domains",
+        "referring_main_domains_dofollow",
+        "referring_main_domains_nofollow"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-02",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "bucket_counts",
+        "high_tier_count",
+        "high_tier_examples",
+        "median_rank",
+        "note",
+        "referring_domains_sampled"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-03",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "buckets",
+        "median_age_days",
+        "newest_age_days",
+        "no_first_seen",
+        "note",
+        "oldest_age_days",
+        "recent_90_pct",
+        "sample_size"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-04",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "avg_links_per_referring_domain",
+        "linking_pages",
+        "linking_pages_dofollow",
+        "linking_pages_nofollow",
+        "note"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-05",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "backlinks_per_referring_page",
+        "note",
+        "referring_pages",
+        "total_backlinks"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-06",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "authoritative_pct_of_classified",
+        "authoritative_total",
+        "matching_tlds",
+        "note",
+        "total_classified_links"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-07",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "high_authority_count",
+        "high_authority_examples",
+        "note",
+        "rank_buckets",
+        "sampled_anchors",
+        "very_low_count",
+        "very_low_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-08",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "approx_dr_equivalent",
+        "dataforseo_rank",
+        "note",
+        "rank_scale"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-09",
+      "status": "partial",
+      "pillar": "P3",
+      "value_keys": [
+        "estimated_monthly_traffic",
+        "estimated_paid_traffic_cost_usd",
+        "missing_signals",
+        "organic_keyword_count",
+        "organic_traffic_proxy_pass",
+        "pos_distribution",
+        "top_10_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo_labs.domain_rank_overview"
+      ],
+      "errors": [
+        "Status=partial: full siteAuthority composition needs backlinks subscription + KG key"
+      ]
+    },
+    {
+      "variable_id": "P3-10",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "above_100_count",
+        "above_100_pct",
+        "distribution",
+        "homepage_rank",
+        "homepage_url_matched",
+        "note",
+        "pages_sampled",
+        "top_pages_by_rank",
+        "zero_rank_count",
+        "zero_rank_urls"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.bulk_pages_summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-12",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "anchors_sampled",
+        "bucket_backlinks",
+        "bucket_counts",
+        "examples_by_bucket",
+        "note",
+        "pct_of_backlinks_by_bucket",
+        "total_backlinks_in_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-14",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "aligned_count",
+        "mismatched_count",
+        "mismatched_examples",
+        "mismatched_pct",
+        "neutral_count",
+        "note",
+        "sampled_anchors",
+        "topic_context_used",
+        "unclassified"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors",
+        "llm.anthropic_haiku"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-15",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "note",
+        "spam_backlinks_total",
+        "spam_match_count",
+        "spam_matches",
+        "spam_patterns_library_size",
+        "spam_pct_of_sampled",
+        "top_anchor",
+        "top_pct_of_sampled",
+        "total_sampled_backlinks"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-17",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "dofollow_pages",
+        "dofollow_pct",
+        "nofollow_pages",
+        "nofollow_pct",
+        "note",
+        "total_referring_pages"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-18",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "note",
+        "rel_attribute_counts",
+        "sponsored_pct",
+        "total_referring_pages",
+        "ugc_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-19",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "boilerplate_count",
+        "boilerplate_pct",
+        "in_content_count",
+        "in_content_pct",
+        "location_distribution",
+        "note",
+        "other_count",
+        "total_links_with_location"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-20",
+      "status": "unmeasurable",
+      "pillar": "P3",
+      "value_keys": [
+        "approximation_available_at",
+        "reason",
+        "see_also"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [],
+      "errors": [
+        "position requires browser render"
+      ]
+    },
+    {
+      "variable_id": "P3-21",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "distribution",
+        "irrelevant_examples",
+        "note",
+        "relevant_examples",
+        "relevant_pct",
+        "sampled_domains",
+        "topic_context_used",
+        "unclassified"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains",
+        "llm.anthropic_haiku"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-22",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "local_tld_share_pct",
+        "local_tlds_for_market",
+        "note",
+        "primary_market_country_from_gbp",
+        "tld_distribution",
+        "top_tld",
+        "top_tld_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-23",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "ip_to_subnet_ratio",
+        "note",
+        "referring_domains",
+        "referring_ips",
+        "referring_subnets",
+        "subnet_to_domain_ratio"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-24",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "abs_change",
+        "avg_delta_per_month",
+        "biggest_gain_month",
+        "biggest_gain_pct_of_start",
+        "deltas_full",
+        "ending_value",
+        "metric",
+        "months_with_gain",
+        "months_with_loss",
+        "note",
+        "pct_change",
+        "starting_value",
+        "window"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.timeseries_summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-25",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "abs_change",
+        "biggest_loss_month",
+        "biggest_loss_pct_of_prior",
+        "deltas_full",
+        "ending_value",
+        "metric",
+        "months_with_gain",
+        "months_with_loss",
+        "note",
+        "pct_change",
+        "starting_value",
+        "window"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.timeseries_summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-26",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "age_days",
+        "age_years",
+        "first_seen",
+        "note"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-27",
+      "status": "unmeasurable",
+      "pillar": "P3",
+      "value_keys": [
+        "approximation_available_at",
+        "reason",
+        "remediation"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [],
+      "errors": [
+        "requires referrer-page crawl"
+      ]
+    },
+    {
+      "variable_id": "P3-28",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "citation_count",
+        "domain_queried",
+        "note",
+        "samples"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "mediawiki.exturlusage"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-29",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "distribution",
+        "note",
+        "profile_spam_score",
+        "sample_size",
+        "toxic_count_per_domain_ge_60",
+        "toxic_examples",
+        "toxic_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary",
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-30",
+      "status": "unmeasurable",
+      "pillar": "P3",
+      "value_keys": [
+        "reason",
+        "related",
+        "remediation"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [],
+      "errors": [
+        "owner-only access"
+      ]
+    },
+    {
+      "variable_id": "P3-31",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "note",
+        "outbound_domains_count",
+        "reciprocal_count",
+        "reciprocal_domains",
+        "reciprocal_pct",
+        "referring_domains_sampled"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains",
+        "html.outbound_external"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-32",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "brand_variants_used",
+        "branded_anchor_examples",
+        "branded_backlinks",
+        "branded_pct_of_sampled",
+        "note",
+        "other_backlinks",
+        "total_sampled_backlinks"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-33",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "forum_count",
+        "forum_pct",
+        "note",
+        "platform_distribution",
+        "total_classified_links"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-34",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "hub_count",
+        "hub_examples",
+        "note",
+        "sampled_domains",
+        "unclassified"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains",
+        "llm.anthropic_haiku"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-35",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "authorities",
+        "authority_count",
+        "note",
+        "sample_size",
+        "threshold_rank"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-36",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "guest_post_examples",
+        "guest_post_network_count",
+        "guest_post_pct",
+        "note",
+        "sampled_domains",
+        "unclassified"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains",
+        "llm.anthropic_haiku"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-37",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "excluded_branded_or_url",
+        "excluded_branded_or_url_count",
+        "note",
+        "threshold_domains",
+        "widget_candidate_count",
+        "widget_candidates"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.anchors"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-38",
+      "status": "failed",
+      "pillar": "P3",
+      "value_keys": [
+        "directory_match_count",
+        "directory_matches",
+        "directory_pattern_library_size",
+        "note",
+        "pr_match_count",
+        "pr_pattern_library_size",
+        "press_release_matches",
+        "sample_size"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P3-39",
+      "status": "passed",
+      "pillar": "P3",
+      "value_keys": [
+        "note",
+        "referring_pages",
+        "site_ratio",
+        "suspected_sitewide_domains",
+        "top_referring_domains_ratios",
+        "total_backlinks"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "backlinks.summary",
+        "backlinks.referring_domains"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-01",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "active_months_last_12",
+        "caveat",
+        "coefficient_of_variation",
+        "consistency_classification",
+        "month_distribution",
+        "publications_last_12m",
+        "publications_last_3m",
+        "publications_per_month_12m",
+        "publications_per_month_3m",
+        "urls_in_sitemap",
+        "urls_with_lastmod"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.sitemap_fetch",
+        "composition.publishing_cadence_consistency"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-02",
+      "status": "passed",
+      "pillar": "P4",
+      "value_keys": [
+        "fresh_count",
+        "fresh_threshold_days",
+        "max_age_days",
+        "median_age_days",
+        "min_age_days",
+        "p75_age_days",
+        "page_findings",
+        "pages_total",
+        "pages_with_date",
+        "stale_count",
+        "stale_threshold_days",
+        "undated_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "htmldate.find_date"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-03",
+      "status": "passed",
+      "pillar": "P4",
+      "value_keys": [
+        "article_like_total",
+        "page_findings",
+        "schema_and_text",
+        "schema_only",
+        "text_only",
+        "with_author_total",
+        "without_author_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.byline_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-04",
+      "status": "unmeasurable",
+      "pillar": "P4",
+      "value_keys": [
+        "reason",
+        "url_patterns_checked"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-05",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "findings",
+        "fuzzy_count",
+        "harvested_authors",
+        "high_confidence_count",
+        "kg_checked",
+        "unknown_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "google_kg.entities_search",
+        "trafilatura.main_text",
+        "extruct.parse_structured_data",
+        "composition.author_kg_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-06",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "authoritativeness_signals",
+        "experience_signals",
+        "expertise_signals",
+        "pillars",
+        "trust_signals"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "composition.eeat_aggregation",
+        "extruct.parse_structured_data",
+        "http.html_fetch",
+        "anthropic.messages.create"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-07",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "pages_errored",
+        "pages_evaluated",
+        "pages_passed_overall",
+        "pages_with_ai_boilerplate",
+        "pages_with_first_hand_signals",
+        "pages_with_original_elements",
+        "pages_with_padding",
+        "pages_with_templating_signs"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": false
+        },
+        {
+          "id": 6,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.content_substance_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-08",
+      "status": "unmeasurable",
+      "pillar": "P4",
+      "value_keys": [
+        "findings_sample",
+        "reason"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "serp.google.organic",
+        "http.competitor_fetch"
+      ],
+      "errors": [
+        "no comparable ratios"
+      ]
+    },
+    {
+      "variable_id": "P4-09",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "depth_signal_counts",
+        "failing_pages_sample",
+        "pages_evaluated",
+        "pages_failing",
+        "pages_passing",
+        "pages_surface_level"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.insightfulness_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-10",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "best_cited_pages",
+        "mean_density_per_1000",
+        "median_density_per_1000",
+        "note",
+        "pages_evaluated",
+        "zero_citation_pages_count",
+        "zero_citation_pct",
+        "zero_citation_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.extract",
+        "composition.authority_citation_density"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-11",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "errored_count",
+        "note",
+        "pages_evaluated",
+        "pages_passed_full",
+        "pass_pct",
+        "passing_pages",
+        "signal_coverage_counts",
+        "signal_coverage_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.original_research_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-12",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "eligible_pages_total",
+        "orphan_pct",
+        "orphan_sample",
+        "pages_orphan",
+        "pages_with_breadcrumb",
+        "pages_with_url_category",
+        "url_category_distribution"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.content_tagging_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-13",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "eligible_pages",
+        "failing_count",
+        "failing_sample",
+        "matching_count",
+        "matching_pct",
+        "matching_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "trafilatura.main_text",
+        "composition.three_layer_structure_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-14",
+      "status": "passed",
+      "pillar": "P4",
+      "value_keys": [
+        "comparative_page_count",
+        "matches_sample",
+        "pages_total"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "dataforseo.on_page.instant_pages",
+        "composition.comparative_content_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-15",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "missing_methodology_sample",
+        "pages_missing_methodology",
+        "pages_with_methodology",
+        "review_pages_total",
+        "with_methodology_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text",
+        "composition.methodology_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-16",
+      "status": "passed",
+      "pillar": "P4",
+      "value_keys": [
+        "disclosure_page_count",
+        "disclosure_pages",
+        "pages_about_ai",
+        "pages_flagged_ai_patterns_by_p4_21"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text",
+        "composition.ai_disclosure_pattern_match",
+        "P4-21.content_substance_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-17",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "findings_sample",
+        "pages_with_author_signal",
+        "pages_with_authority_citations",
+        "pages_with_first_hand",
+        "ymyl_categories",
+        "ymyl_pages_total"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "composition.ymyl_handling_aggregation",
+        "composition.ymyl_classifier",
+        "composition.content_substance_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-19",
+      "status": "unmeasurable",
+      "pillar": "P4",
+      "value_keys": [
+        "applicability",
+        "note",
+        "reason",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.ugc_detection"
+      ],
+      "errors": [
+        "not applicable"
+      ]
+    },
+    {
+      "variable_id": "P4-20",
+      "status": "unmeasurable",
+      "pillar": "P4",
+      "value_keys": [
+        "disclosure_page_count",
+        "reason",
+        "sponsored_link_count"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.affiliate_link_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-21",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "ai_pattern_pages",
+        "ai_pattern_pct",
+        "no_first_hand_pages",
+        "no_first_hand_pct",
+        "pages_evaluated",
+        "sample_ai_pattern",
+        "sample_templated",
+        "templated_pages",
+        "templated_pct"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 6,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.content_substance_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-22",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "low_originality_pct",
+        "mass_produced_pct",
+        "misleading_headlines_pct",
+        "pages_evaluated",
+        "panda_demotion_risk"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "composition.panda_aggregation",
+        "composition.content_substance_evaluator",
+        "composition.headline_accuracy_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-23",
+      "status": "failed",
+      "pillar": "P4",
+      "value_keys": [
+        "errored_pages",
+        "failing_pages",
+        "issue_counts",
+        "pages_errored",
+        "pages_evaluated",
+        "pages_failed",
+        "pages_passed"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.headline_accuracy_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P4-24",
+      "status": "passed",
+      "pillar": "P4",
+      "value_keys": [
+        "caveat",
+        "refresh_pct_last_90d",
+        "stale_pages_over_1yr_count",
+        "stale_pages_sample",
+        "urls_in_sitemap",
+        "urls_refreshed_last_90d",
+        "urls_with_lastmod"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.sitemap_fetch",
+        "composition.quarterly_refresh_estimate"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-01",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "appearances",
+        "note",
+        "serps_we_appear_in_count",
+        "serps_with_local_pack"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.local_pack_appearance"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-02",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "category_tokens",
+        "gbp_title",
+        "homepage_overlap_tokens",
+        "homepage_title",
+        "primary_category",
+        "ranked_keyword_overlap_tokens",
+        "ranked_keywords_inspected",
+        "title_keyword_stuffed"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info",
+        "dataforseo_on_page.instant_pages",
+        "dataforseo_labs.ranked_keywords",
+        "composition.gbp_category_alignment"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-03",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "additional_categories",
+        "deferred_owner_rules",
+        "duplicates_with_primary",
+        "near_duplicate_pairs",
+        "primary_category",
+        "secondary_count",
+        "total_categories"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info",
+        "composition.gbp_secondary_category_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-04",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "description_length",
+        "discovery_method",
+        "is_claimed",
+        "missing_recommended",
+        "missing_required",
+        "place_id",
+        "recommended_fields_present",
+        "recommended_fields_total",
+        "required_fields_present",
+        "required_fields_total",
+        "title"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-05",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "address_match",
+        "gbp",
+        "name_match",
+        "phone_match",
+        "site"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info",
+        "extruct.parse_structured_data",
+        "composition.nap_consistency_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-06",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "brand_query",
+        "deferred_features",
+        "distinct_platforms",
+        "matches",
+        "note",
+        "platforms"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.brand_serp_citation_scan"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-07",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "brand_query",
+        "citations_by_tier",
+        "deferred_features",
+        "distinct_tiers_present",
+        "method_note",
+        "tier_counts",
+        "total_citations_detected"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.citation_authority_tiering"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-08",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "brand_query",
+        "deferred_features",
+        "distinct_platforms",
+        "industry_assumption",
+        "matches",
+        "note",
+        "platforms"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.brand_serp_niche_scan"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-09",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "place_id",
+        "thresholds",
+        "votes_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-10",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "rating",
+        "rating_distribution",
+        "thresholds",
+        "votes_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-11",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "deceleration_ratio",
+        "earliest_review",
+        "historical_rate_per_90d",
+        "last_180d_count",
+        "last_365d_count",
+        "last_90d_count",
+        "latest_review",
+        "max_gap_days",
+        "mean_gap_days",
+        "note",
+        "recent_rate_per_90d",
+        "reviews_sampled",
+        "span_days"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-12",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "days_since_latest_review",
+        "latest_review_at",
+        "oldest_review_at",
+        "reviews_inspected",
+        "reviews_last_30d",
+        "reviews_last_90d",
+        "reviews_with_timestamp"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews",
+        "composition.review_recency"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-13",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "no_response_sample",
+        "response_pct",
+        "reviews_with_response",
+        "total_reviews"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews",
+        "composition.response_rate"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-14",
+      "status": "unmeasurable",
+      "pillar": "P5",
+      "value_keys": [
+        "reason",
+        "total_reviews"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "business_data.google.reviews"
+      ],
+      "errors": [
+        "no owner responses"
+      ]
+    },
+    {
+      "variable_id": "P5-15",
+      "status": "unmeasurable",
+      "pillar": "P5",
+      "value_keys": [
+        "reason",
+        "responses_with_unparseable_timestamps",
+        "reviews_inspected"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "business_data.google.reviews"
+      ],
+      "errors": [
+        "no usable response lags"
+      ]
+    },
+    {
+      "variable_id": "P5-16",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "keyword_rich_pct",
+        "keyword_rich_reviews",
+        "location_keywords_count",
+        "note",
+        "reviews_mentioning_brand",
+        "reviews_mentioning_location",
+        "reviews_mentioning_service",
+        "rich_examples",
+        "service_keywords_count",
+        "total_reviews"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews",
+        "composition.site_lexicon"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-17",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "media_examples",
+        "media_field_signatures_seen",
+        "media_pct",
+        "note",
+        "reviews_with_media",
+        "total_reviews"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-18",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "credible_reviewer_examples",
+        "local_guide_pct",
+        "local_guides",
+        "no_history_data_count",
+        "note",
+        "reviewer_history_distribution",
+        "single_review_count",
+        "single_review_examples",
+        "single_review_pct",
+        "substantive_history_count",
+        "substantive_history_pct",
+        "total_reviews"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-19",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "advertised_rating",
+        "deferred_features",
+        "distribution",
+        "negative_count",
+        "negative_pct",
+        "neutral_count",
+        "positive_count",
+        "positive_pct",
+        "total_reviews",
+        "weighted_average"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info",
+        "composition.rating_distribution_sentiment"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-20",
+      "status": "passed",
+      "pillar": "P5",
+      "value_keys": [
+        "flag_count",
+        "flags",
+        "note",
+        "rating_distribution",
+        "total_reviews",
+        "ultra_short_positive_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.reviews",
+        "composition.pattern_detection"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-21",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "freshness_deferred",
+        "has_logo",
+        "has_main_image",
+        "logo_url",
+        "main_image_url",
+        "total_photos"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-22",
+      "status": "unmeasurable",
+      "pillar": "P5",
+      "value_keys": [
+        "observable_prerequisite",
+        "reason",
+        "remediation_paths",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": [
+        "posts data not in basic endpoint"
+      ]
+    },
+    {
+      "variable_id": "P5-23",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "deferred_rules",
+        "note",
+        "questions_and_answers_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-24",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "available_attributes_flat",
+        "available_by_category",
+        "category_count",
+        "total_available",
+        "unavailable_attributes_flat",
+        "unavailable_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-25",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "address_present",
+        "days_declared",
+        "days_missing_or_null",
+        "deferred_rules",
+        "is_24x7_declared",
+        "open_24h_days"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "business_data.google.my_business_info"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-26",
+      "status": "failed",
+      "pillar": "P5",
+      "value_keys": [
+        "best_block",
+        "best_block_props_count",
+        "page_findings",
+        "pages_with_localbusiness"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "extruct.parse_structured_data",
+        "composition.localbusiness_schema_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P5-27",
+      "status": "unmeasurable",
+      "pillar": "P5",
+      "value_keys": [
+        "applicability",
+        "reason",
+        "remediation_paths",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "gbp_owner_dashboard.not_exposed"
+      ],
+      "errors": [
+        "owner-only data"
+      ]
+    },
+    {
+      "variable_id": "P5-28",
+      "status": "unmeasurable",
+      "pillar": "P5",
+      "value_keys": [
+        "observable_proxies",
+        "reason",
+        "remediation_paths",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "business_data.google.my_business_info",
+        "extruct.parse_structured_data"
+      ],
+      "errors": [
+        "needs geo-SERP + reviews endpoint"
+      ]
+    },
+    {
+      "variable_id": "P6-01",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "page_findings",
+        "pages_checked",
+        "pages_with_div_paragraphs",
+        "pages_with_multi_h1",
+        "pages_with_no_h1",
+        "pages_with_no_main",
+        "pages_with_skipped_levels"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.html_structure_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-02",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "avg_self_contained_claims",
+        "failing_pages_sample",
+        "pages_evaluated",
+        "pages_failing",
+        "pages_passing",
+        "pages_with_marketing_puffery"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.quotability_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-03",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "avg_density_per_500w",
+        "page_findings_sample",
+        "pages_below_density",
+        "pages_with_authority_links",
+        "pages_with_no_citations",
+        "substantive_pages"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text",
+        "composition.citation_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-04",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "median_density",
+        "page_findings",
+        "pages_below_density_count",
+        "pages_below_density_pct",
+        "pages_checked",
+        "thin_page_skip_threshold_words"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text",
+        "composition.numeric_density"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-05",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "failing_sample",
+        "pages_evaluated",
+        "pages_with_named_quote",
+        "total_filler_quotes",
+        "total_named_quotes"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.expert_quote_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-06",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "eligible_pages",
+        "generic_only_pages_count",
+        "generic_only_sample",
+        "grounded_pages_count",
+        "grounded_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "trafilatura.main_text",
+        "composition.first_person_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-07",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "failing_pages_sample",
+        "pages_evaluated",
+        "pages_failing",
+        "pages_passing",
+        "with_attribution",
+        "with_limitations",
+        "with_methodology",
+        "with_primary_data"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.original_research_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-08",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "candidates",
+        "candidates_count",
+        "matching_count",
+        "mismatching_count"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.listicle_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-09",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "page_findings",
+        "pages_total",
+        "pages_with_both",
+        "pages_with_faq_schema",
+        "pages_with_prose_qa"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "extruct.parse_structured_data",
+        "trafilatura.main_text",
+        "composition.faq_pattern_match"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-10",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "failing_pages_sample",
+        "pages_ambiguous",
+        "pages_circular",
+        "pages_evaluated",
+        "pages_non_canonical",
+        "pages_passing",
+        "pages_without_def_sentence"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.definitional_clarity_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-11",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand",
+        "kg_configured",
+        "per_variant",
+        "sources_present",
+        "sources_present_count",
+        "variants_queried"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "google_kg.entities_search",
+        "mediawiki.search",
+        "mediawiki.get_article",
+        "wikidata.search_entities",
+        "wikidata.get_entities"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-12",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "claude",
+        "corpora_deferred",
+        "corpora_tested",
+        "note"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.brand_hallucination_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-13",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand_query",
+        "deferred_features",
+        "hosts_present",
+        "match_count",
+        "matches",
+        "note"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.brand_serp_host_scan"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-14",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand_query",
+        "deferred_features",
+        "matches",
+        "video_host_match_count",
+        "video_pack_in_brand_serp"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.brand_serp_video_scan"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-16",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand_query",
+        "deferred_features",
+        "matches",
+        "news_host_match_count",
+        "note",
+        "top_stories_in_brand_serp"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.brand_serp_news_scan"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-17",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "blocked_bot_count",
+        "per_bot",
+        "robots_present",
+        "robots_size_bytes",
+        "robots_url",
+        "status_code",
+        "user_agent_groups",
+        "wildcard"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.robots_txt"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-18",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "any_present",
+        "llms_full_txt",
+        "llms_txt"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.llms_txt"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-19",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "blocks_with_mentions",
+        "blocks_with_sameas",
+        "non_homepage_pages",
+        "pages_total",
+        "pages_with_breadcrumb",
+        "pages_with_graph_linkage",
+        "pages_with_org",
+        "pages_with_parse_errors",
+        "pages_with_specific_type",
+        "sameas_findings"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        },
+        {
+          "id": 8,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.schema_graph_depth"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-20",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "blocks_with_description",
+        "blocks_with_high_value_sameas",
+        "blocks_with_knowsabout",
+        "blocks_with_worksfor",
+        "kg_mid_referenced",
+        "organisation_blocks_total",
+        "person_blocks_total",
+        "sameas_findings"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        },
+        {
+          "id": 7,
+          "passed": true
+        },
+        {
+          "id": 8,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "extruct.parse_structured_data",
+        "composition.author_org_entity_markup"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-21",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "eligible_pages",
+        "good_chunk_pct",
+        "pages_with_good_chunk_ratio",
+        "section_findings_sample"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.h2_section_chunk_check"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-22",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "acknowledges_limitations_count",
+        "addresses_comparisons_count",
+        "avg_coverage_pct",
+        "failing_pages_sample",
+        "pages_evaluated",
+        "pages_failing",
+        "pages_passing"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.topic_depth_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-23",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "by_class",
+        "classified_count",
+        "stale_findings_sample",
+        "thresholds_days"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.time_sensitivity_classifier",
+        "htmldate.find_date"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-24",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "distinct_types_count",
+        "note",
+        "sample_inspected",
+        "source_type_distribution",
+        "source_type_examples",
+        "top_concentration_pct",
+        "top_domain",
+        "total_main_domains_profile_wide",
+        "types_with_meaningful_signal_ge_2"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "backlinks.referring_domains",
+        "backlinks.summary"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-25",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand_citations",
+        "inclusion_rate_pct",
+        "max_serp_queries_cap",
+        "per_query_results",
+        "queries_run",
+        "queries_with_ai_overview",
+        "top_3_citations",
+        "universe_provenance",
+        "universe_size"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": false
+        },
+        {
+          "id": 4,
+          "passed": true
+        },
+        {
+          "id": 5,
+          "passed": true
+        },
+        {
+          "id": 6,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "serp.google.organic",
+        "composition.ai_overview_parse"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-26",
+      "status": "unmeasurable",
+      "pillar": "P6",
+      "value_keys": [
+        "reason",
+        "remediation_paths",
+        "structure_parallel_to_p6_25",
+        "watchlist"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "perplexity.api (not wired)"
+      ],
+      "errors": [
+        "Perplexity API integration not wired"
+      ]
+    },
+    {
+      "variable_id": "P6-27",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "assistants_deferred",
+        "assistants_tested",
+        "claude",
+        "note",
+        "watchlist"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": false
+        },
+        {
+          "id": 2,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.brand_hallucination_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-28",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "comparative_description_snippet",
+        "direct_description_snippet",
+        "explicit_negative_claims",
+        "hedged",
+        "limitation_note",
+        "llm_tested",
+        "outdated_anchoring",
+        "polarity",
+        "would_recommend_brand"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.brand_sentiment_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-29",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "brand",
+        "field_coverage",
+        "fields_expected",
+        "fields_pct",
+        "fields_populated",
+        "kg_id",
+        "matched_variant",
+        "name",
+        "result_score"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 3,
+          "passed": false
+        }
+      ],
+      "data_sources": [
+        "google_kg.entities_search"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-30",
+      "status": "unmeasurable",
+      "pillar": "P6",
+      "value_keys": [
+        "reason",
+        "variants_queried"
+      ],
+      "rule_outcomes": [],
+      "data_sources": [
+        "mediawiki.search",
+        "mediawiki.get_article"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-31",
+      "status": "passed",
+      "pillar": "P6",
+      "value_keys": [
+        "claimed_category",
+        "claimed_country",
+        "claimed_executives",
+        "claimed_founded_year",
+        "claimed_primary_products",
+        "ground_truth",
+        "hedged",
+        "issues_detected",
+        "known_with_confidence",
+        "limitation_note",
+        "llm_tested"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": true
+        },
+        {
+          "id": 3,
+          "passed": true
+        },
+        {
+          "id": 4,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "anthropic.messages.create",
+        "composition.brand_hallucination_evaluator"
+      ],
+      "errors": []
+    },
+    {
+      "variable_id": "P6-32",
+      "status": "failed",
+      "pillar": "P6",
+      "value_keys": [
+        "pages_checked",
+        "pages_with_alt_stuffing",
+        "pages_with_hidden_css",
+        "pages_with_prompt_injection"
+      ],
+      "rule_outcomes": [
+        {
+          "id": 1,
+          "passed": true
+        },
+        {
+          "id": 2,
+          "passed": false
+        },
+        {
+          "id": 5,
+          "passed": true
+        }
+      ],
+      "data_sources": [
+        "http.html_fetch",
+        "composition.prompt_injection_pattern_match"
+      ],
+      "errors": []
+    }
+  ]
+}

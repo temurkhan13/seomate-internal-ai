@@ -1,0 +1,42 @@
+# SEOMATE pilot configuration: www.pixelettetech.com
+#
+# Credentials are NEVER in this file. They live in repo-root/.env.
+# This file describes WHAT to audit; the env describes HOW to authenticate.
+
+audit:
+  site:
+    domain: pixelettetech.com
+    primary_url: https://www.pixelettetech.com
+    business_type: saas-marketing
+    locales: [en-GB, en-US]
+
+  brand:
+    name: Pixelette Technologies
+    aliases: [Pixelette, Pixelette Tech]
+    legal_entities: [Pixelette Technologies Ltd.]
+
+  # Path is resolved relative to this YAML's directory.
+  # Created when the keyword set is finalised; not required for Foundation.
+  keywords_file: pixelette-keywords.yml
+
+  competitors: []
+
+  gbp:
+    place_id:
+
+  scope:
+    pillars: all
+    h1_stage: all
+    skip_variables: []
+
+run:
+  parallelism: 4
+  rate_limits:
+    dataforseo_rps: 5
+    google_kg_rps: 10
+    perplexity_rps: 1
+  timeout_seconds: 300
+  cost_cap_gbp: 5.00
+  cost_warn_fraction: 0.80
+  retain_raw_responses: true
+  log_dir: ../data/logs

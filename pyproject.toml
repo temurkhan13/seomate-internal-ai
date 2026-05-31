@@ -1,0 +1,69 @@
+[project]
+name = "seomate-auditor"
+version = "0.1.0"
+description = "SEOMATE Site Auditor — H1 data capture layer"
+authors = [
+    { name = "Humza Chishty", email = "harris@pixelette.tech" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    # Core
+    "pydantic>=2.6,<3",
+    "pydantic-settings>=2.2,<3",
+    "typer>=0.12,<1",
+    "structlog>=24.1,<25",
+    "python-dotenv>=1.0,<2",
+    "pyyaml>=6.0,<7",
+
+    # HTTP / async
+    "httpx>=0.27,<1",
+    "tenacity>=8.2,<9",  # retry decorator
+    "aiolimiter>=1.1,<2", # rate limiting
+
+    # HTML / structured data
+    "extruct>=0.18,<1",  # JSON-LD, microdata, RDFa, Open Graph extraction
+    "trafilatura>=2.0,<3",  # main-content extraction for embeddings + LLM
+
+    # LLM evaluation (H1c)
+    "anthropic>=0.40,<1",  # Claude SDK for LLM-driven rule evaluation
+
+    # Storage
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "psycopg[binary]>=3.1,<4",  # Postgres driver for SQLAlchemy 2.0
+    "alembic>=1.13,<2",
+    "pgvector>=0.2,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.23,<1",
+    "respx>=0.21,<1",       # httpx mocking
+    "ruff>=0.4,<1",
+    "mypy>=1.10,<2",
+    "types-pyyaml",
+]
+
+[project.scripts]
+seomate = "seomate.cli:app"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["seomate*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20", "RET", "SIM", "TID", "PL", "RUF"]
+ignore = ["PLR0913"]  # too many arguments — common in extractors
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

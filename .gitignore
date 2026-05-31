@@ -1,0 +1,94 @@
+# Environment / credentials
+.env
+.env.local
+.env.*.local
+credentials/
+*.pem
+*.key
+
+# Python (some patterns anchored with leading slash to avoid catching
+# unrelated dirs like web/lib/)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+/build/
+develop-eggs/
+/dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+/var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# Build artefacts
+dist/
+build/
+
+# Data and logs (never committed)
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.history/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Captured raw responses (debugging artefacts, never committed)
+auditor/data/raw_responses/
+
+# Docker
+.docker/
+
+# Audit logs
+auditor/data/logs/
