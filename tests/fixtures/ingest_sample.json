@@ -1,0 +1,49 @@
+{
+  "site_domain": "example.com",
+  "taxonomy_version": "test-taxonomy-v1",
+  "config_snapshot": { "source": "claude-session", "note": "sample ingest fixture" },
+  "captures": [
+    {
+      "variable_id": "P1-20",
+      "pillar": "P1",
+      "subject_type": "site",
+      "subject_id": "example.com",
+      "status": "failed",
+      "value": { "indexable_pages": 10, "pages_missing_canonical": 4 },
+      "rules": [
+        {
+          "rule_id": 1,
+          "rule_text": "Canonical tag is present on every indexable page",
+          "passed": false,
+          "evidence": { "pages_missing_canonical": ["https://example.com/a", "https://example.com/b"] }
+        }
+      ],
+      "evidence_weight": "Consensus",
+      "data_sources_used": ["claude-session.fetch"],
+      "cost_incurred_gbp": 0.0
+    },
+    {
+      "variable_id": "P1-01",
+      "pillar": "P1",
+      "subject_type": "site",
+      "subject_id": "example.com",
+      "status": "passed",
+      "value": { "duplicate_titles": 0 },
+      "evidence_weight": "Consensus",
+      "data_sources_used": ["claude-session.fetch"],
+      "cost_incurred_gbp": 0.0
+    },
+    {
+      "variable_id": "P5-22",
+      "pillar": "P5",
+      "subject_type": "business",
+      "subject_id": "example.com",
+      "status": "unmeasurable",
+      "value": null,
+      "evidence_weight": "Probable",
+      "data_sources_used": [],
+      "cost_incurred_gbp": 0.0,
+      "errors": ["Requires Google Business Profile OAuth (not available to session)"]
+    }
+  ]
+}
