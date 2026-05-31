@@ -250,6 +250,57 @@ def taxonomy_stats(
 
 
 @app.command()
+def ingest(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        help="Path to the session-produced audit JSON (see docs/ingest-contract.md).",
+        exists=True,
+        readable=True,
+        resolve_path=True,
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate the document and report counts, but write nothing to the DB.",
+    ),
+) -> None:
+    """Ingest a Claude-session audit JSON into the SEOMATE database.
+
+    The session performs the 226-variable diagnostic itself (using the
+    taxonomy as its understanding) and emits one JSON document. This writes
+    it as a normal audit so it shows on the dashboard. Reuses the same
+    schema and capture contract as a natively-run audit.
+    """
+    from seomate.ingest import (
+        IngestError,
+        ingest_audit,
+        load_payload,
+        parse_payload,
+    )
+
+    try:
+        payload = load_payload(file)
+        audit_id, meta, captures = parse_payload(payload)
+    except IngestError as exc:
+        typer.echo("Ingest validation failed:", err=True)
+        for problem in exc.problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Site:             {meta['site_domain']}")
+    typer.echo(f"Taxonomy version: {meta['taxonomy_version']}")
+    typer.echo(f"Captures:         {len(captures)}")
+    if dry_run:
+        typer.echo("Dry run: document is valid; nothing written.")
+        return
+
+    written_id = asyncio.run(ingest_audit(payload))
+    typer.echo(f"Ingest complete: {written_id}")
+
+
+@app.command()
 def inspect(
     audit_id: str = typer.Argument(..., help="Audit UUID to inspect."),
 ) -> None:
