@@ -104,17 +104,26 @@ The session reaches Postgres directly, so `ingest` reuses the auditor's own
 models and keeps `seomate-be` read-only. See `docs/ingest-contract.md`
 "Why this path".
 
-## Known limitations (follow-ups)
+## What the brief contains (verified)
 
-- **`data_sources` and `hard_dependencies` are empty in the exported brief.**
-  The taxonomy parser (`seomate/taxonomy/loader.py`) does not currently
-  populate the per-variable Data Sources (Step 6) or Dependencies (Step 7)
-  sections into the `Variable` model, so `export-brief` emits them as empty
-  lists for all 226 variables. Everything else the session needs is present:
-  `definition`, `rules` (Step 1.5, 142 variables have them), `verification`,
-  `citations`, `cost`, `weight_rationale`. Until the loader is fixed, the
-  session determines which source answers a variable from its `definition` +
-  `verification` text plus the per-pillar guidance in Step 1 above
-  (PSI -> P2 performance, Knowledge Graph -> entity/brand, page HTML ->
-  on-page, owner-only data -> `unmeasurable`). This is a parser follow-up,
-  not a blocker for the loop.
+`seomate export-brief` against the current taxonomy (`47872f06b860`)
+produces **232 active variables**, populated as follows:
+
+- `definition`: 226 / 232
+- `data_sources` (Step 4): 226 / 232 (top-level union: 396 distinct source strings)
+- `verification` (Step 5), `cost` (Step 6), `citations`, `weight_rationale`: 226 / 232
+- `rules` (Step 1.5): 81 / 232 (only variables with an explicit evaluation
+  step have rules; the rest are read-a-value variables)
+- `hard_dependencies` (Step 7 `depends_on`): 48 / 232
+
+The ~6 variables without `definition`/`data_sources` are edge entries
+(headers or sparsely-specified variables); the session treats a variable
+with no data source as `unmeasurable` unless it can determine the source
+from context.
+
+**Count note:** the taxonomy parses to **232** active variables, while the
+cloud audits to date attempted **226** and the project has informally used
+"226". The 6-variable gap is unreconciled and worth a one-time check
+(whether those 6 are genuinely new variables to audit or parser edge
+entries). It does not block the loop; flag it before treating 232 as the
+official target.
