@@ -196,6 +196,46 @@ def ping_dataforseo() -> None:
     raise typer.Exit(code=asyncio.run(_ping()))
 
 
+@app.command(name="export-brief")
+def export_brief(
+    out: Path = typer.Option(
+        Path("audit-brief.json"),
+        "--out",
+        "-o",
+        help="Where to write the audit brief JSON.",
+        resolve_path=True,
+    ),
+    path: Path | None = typer.Option(
+        None,
+        "--taxonomy-path",
+        help="Path to o1-taxonomy.md (default: repo docs/o1-taxonomy.md).",
+    ),
+) -> None:
+    """Export the taxonomy as an audit brief for a Claude session.
+
+    The brief is the session's instruction set: per variable, its name,
+    description, data sources, and Step 1.5 rules, plus the raw taxonomy
+    markdown. A session reads this, performs the diagnostic itself, and
+    emits an ingest document (see docs/ingest-contract.md), which
+    `seomate ingest` writes back to the dashboard.
+    """
+    import json
+
+    from seomate.brief import build_brief
+    from seomate.taxonomy import Catalog
+
+    catalog = Catalog.from_file(path)
+    brief = build_brief(catalog)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(brief, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    typer.echo(f"Wrote audit brief: {out}")
+    typer.echo(f"  taxonomy version: {brief['taxonomy_version']}")
+    typer.echo(f"  variables:        {brief['variable_count']}")
+    typer.echo(f"  pillars:          {brief['pillars']}")
+    typer.echo(f"  data sources:     {len(brief['data_sources'])}")
+
+
 @app.command(name="taxonomy-stats")
 def taxonomy_stats(
     path: Path | None = typer.Option(
