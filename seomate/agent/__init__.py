@@ -18,5 +18,7 @@ applies semantic judgment per variable, and emits the ingest document. This
 package is the "data plumbing" so that judgment is all the session must supply.
 """
 from seomate.agent.gather import GatherResult, gather
+from seomate.agent.plan import plan_fixes
+from seomate.agent.remediation import RemediationSpec, get_spec
 
-__all__ = ["gather", "GatherResult"]
+__all__ = ["gather", "GatherResult", "plan_fixes", "get_spec", "RemediationSpec"]
