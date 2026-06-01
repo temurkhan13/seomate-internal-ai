@@ -1,129 +1,125 @@
-# Agent audit runbook: how a Claude session runs a SEOMATE audit
+# Agent audit runbook: how a Claude session audits any domain with SEOMATE
 
-This is the **Phase 1 diagnostic loop** for the agent-driven model. The
-Claude session is the auditor; SEOMATE supplies the understanding (the
-taxonomy) and the storage + dashboard. The session reads a *brief*,
-performs the 226-variable diagnostic itself using the same public data
-sources the old auditor used, and emits one ingest document that
-`seomate ingest` writes back so the audit appears on the dashboard.
+This is the **Phase 1 diagnostic loop**. A Claude session is the auditor;
+SEOMATE supplies the taxonomy (the understanding), the data plumbing
+(`seomate gather`), the storage, and the dashboard. To audit a new site you do
+**not** hand-roll fetch logic, and you do **not** need to rediscover which
+sources are reachable, that is what `gather` is for.
 
 ```
-seomate export-brief  ─►  audit-brief.json  ─►  [ Claude session does the audit ]  ─►  audit.json  ─►  seomate ingest  ─►  dashboard
-        (taxonomy)                                  (gathers data, evaluates)            (226 captures)      (write-back)
+seomate export-brief ─► brief.json ─┐
+                                     ├─► [ session: read manifest + brief, judge each variable ] ─► audit.json ─► seomate ingest ─► dashboard
+seomate gather --domain X ─► cache/ ─┘        (semantic judgment only)                                (233 captures)    (write-back)
 ```
 
-The two ends of this loop are code in this repo (`export-brief`, `ingest`);
-the middle is the session following the steps below.
+Three commands are code in this repo (`export-brief`, `gather`, `ingest`). The
+middle, applying judgment per variable, is the session's job and the only part
+that needs a brain.
 
-## Prerequisites
-
-- `DATABASE_URL` set (the session writes via `seomate ingest`, which needs DB access).
-- Google data-source keys available to the session for the variables that need them:
-  PageSpeed Insights (`GOOGLE_PSI_API_KEY`), Knowledge Graph (`GOOGLE_KG_API_KEY`).
-  Page HTML is fetched directly. (These are the same sources the old auditor used.)
-
-## Step 0 — Get the brief
+## TL;DR for a fresh session ("audit abcd.com")
 
 ```bash
-seomate export-brief --out audit-brief.json
+# 0. one-time: copy .env.example -> .env, fill the keys you have (see table below)
+seomate export-brief --out brief.json                 # the 232-variable instruction set
+seomate gather --domain abcd.com --out audit-cache    # collect every reachable source
+#    -> reads audit-cache/manifest.json to see what's available vs unavailable
+# ... session evaluates each variable from the cache (see "Evaluate" below) ...
+seomate ingest --file audit.json --dry-run            # validate
+seomate ingest --file audit.json                      # write -> dashboard
+seomate inspect <printed-audit-id>                    # confirm
 ```
 
-`audit-brief.json` contains, for every active variable:
-`variable_id`, `pillar`, `name`, `description`, `evidence_weight`,
-`data_sources` (which sources answer it), `step_1_5_rules` (the pass/fail
-rules), `hard_dependencies`, and `raw_markdown` (the full taxonomy prose).
-Top level carries `taxonomy_version` (copy it into the ingest doc), the
-pillar counts, and the union of all `data_sources`.
+A bare `--domain` works: `gather` auto-derives keyword seeds (from the site's
+own pages) and the market/location (from the TLD; override with
+`--location-code`). For a non-UK/US site, pass the right DataForSEO location
+code.
 
-## Step 1 — Gather inputs (from the same Google sources)
+## Step 1 — Gather (`seomate gather`)
 
-Per the `data_sources` named in the brief:
+`seomate gather --domain abcd.com --out audit-cache` writes one JSON file per
+source plus `manifest.json`. **Always read `manifest.json` first** , it lists,
+per source, `available: true/false` and a `reason` when false. The contract:
 
-- **Page HTML / on-page**: fetch the site's pages (homepage + sitemap URLs).
-  Titles, canonicals, headings, meta, schema/JSON-LD, OG tags, alt text,
-  internal links come from here.
-- **PageSpeed Insights**: performance / Core-Web-Vitals variables (P2).
-  Run both mobile and desktop; if the mobile leg errors, the affected
-  variables are `unmeasurable`, not a desktop-only `pass` (this was a real
-  contamination bug, see the vault's reliability notes).
-- **Knowledge Graph**: entity / brand presence variables.
-- **Owner-only data** (Search Console, Business Profile, backlinks tools):
-  not reachable by the session. Variables that depend on these are
-  `unmeasurable` with an `errors` note saying which source is missing.
-  Do **not** guess them as pass/fail.
+> For any source marked **unavailable**, mark the variables that depend on it
+> `unmeasurable` with that reason. **Never guess a pass/fail.**
+
+### Source → capability matrix (what each unlocks, and how to enable it)
+
+| Source (cache file) | Auth needed | Unlocks (pillars) |
+|---|---|---|
+| **crawl** (`crawl.json`) | none (HTTP) | On-page P1 (titles, meta, headings, canonical, schema, og/twitter, alt, URL), most of P2 technical, P6 structure, the **internal link graph** (orphans, inbound counts, depth), body text for P4/P6 content judgment |
+| **robots** (`robots.json`) | none | P2 robots/sitemap, P6-17 LLM-bot access, P6-18 llms.txt |
+| **psi** (`psi.json`) | `GOOGLE_PSI_API_KEY` | P2 Core Web Vitals lab (LCP/FCP/TBT/CLS), mobile usability |
+| **crux** (`crux.json`) | `GOOGLE_PSI_API_KEY` (shared) | P2-09 INP + field-data CWV (real users). NB: the **Chrome UX Report API must be enabled** on the GCP project, else 403 |
+| **wayback** (`wayback.json`) | none | P4-01 publishing cadence, P4-02 freshness, P1-44 content-update magnitude (diff snapshots), P2-40 host age |
+| **knowledge_graph** (`entity.json`) | `GOOGLE_KG_API_KEY` | P6-29 KG entity completeness, brand-entity presence |
+| **dataforseo.serp** (`dataforseo.json`) | `DATAFORSEO_LOGIN`/`PASSWORD` | P0-05 SERP features, P6-25 AI Overview, P0-18 big-brand preference, competitor set, P5-28 location demotion (multi-geo) |
+| **dataforseo.labs** | DataForSEO | P0-02/03/04/06 keyword volume/difficulty/CPC/intent, P0-15 brand volume, rankings |
+| **dataforseo.business** | DataForSEO | P5 GBP profile (category/completeness/rating) **and reviews** (velocity/recency/response/sentiment) , **no GBP owner access needed** |
+| **dataforseo.backlinks** | DataForSEO + **Backlinks subscription** (~$100/mo) | All 39 P3 off-page. Tag deferred if the subscription is off |
+| **dataforseo (AI Optimization)** | DataForSEO | P6-26/27/28/31 real LLM-citation/sentiment/hallucination across ChatGPT/Claude/Gemini/Perplexity (not yet in `gather`; call directly per the [[Jun-01]] pattern) |
+| **gsc** (`gsc.json`) | `GOOGLE_OAUTH_*` triple | P0-13 cannibalization, P0-18 CTR, P2-02/03 sitemap, query/page performance. The consenting account must be a **user on the property** (owner adds the auditing email) |
+
+### What still needs access a session may not have
+- **GSC**: the OAuth account must be added to the target property in Search
+  Console by its owner (one-time). Token setup: `docs/google-oauth-setup.md`.
+- **GBP owner-only** (posts, Q&A, engagement, photo count): need the Business
+  Profile **owner** API. Reviews + profile come through DataForSEO without it.
+- **Local citations** (P5-06/07/08): SERP `site:` against directories
+  (clutch/crunchbase/trustpilot/...) is a decent proxy; a dedicated citations
+  tool gives the full count.
+- **GSC Crawl Stats** (P2-05): UI-only, no API. Genuinely unmeasurable.
 
 ## Step 2 — Evaluate each variable
 
-For each variable in the brief:
-
+For each variable in `brief.json`:
 1. Read its `description` + `raw_markdown` to understand what it measures.
-2. Apply its `step_1_5_rules` against the gathered data. Each rule gets a
-   `passed: true/false` plus structured `evidence` (counts, failing URLs,
-   expected vs actual).
-3. Set the capture `status`: `passed` (all rules pass), `failed` (one or
-   more fail), `partial`, `not_applicable`, `unmeasurable` (owner data
-   missing), or `error` (couldn't evaluate).
-4. Carry the variable's `evidence_weight` through to the capture.
-5. Record `data_sources_used`.
+2. **Confirm the variable_id matches the evidence** , a recurring bug is filing
+   real data under the wrong id. The brief carries the canonical `name`; sanity-
+   check your capture's intent against it before writing.
+3. Apply its `step_1_5_rules` against the gathered cache. Each rule → `passed:
+   true/false` + structured `evidence` (counts, failing URLs, expected vs actual).
+4. Set `status`: `passed` / `failed` / `partial` / `not_applicable` /
+   `unmeasurable` (source unavailable) / `error`.
+5. Carry `evidence_weight` through; record `data_sources_used`.
 
-**Discipline (matches the old auditor's design rules):**
-- Judge semantically against the rule text; do not reduce a rule to a
-  keyword match.
-- Evidence must be real and gathered this run. Never invent a value,
-  a count, or a passing result you did not observe. An unobserved variable
-  is `unmeasurable` or `error`, never a fabricated `pass`/`fail`.
+**Discipline (non-negotiable, this is why the output is trusted):**
+- Judge semantically against the rule text; never reduce a rule to a keyword match.
+- Evidence must be real and in the cache. **Never invent a value, count, or a
+  passing result you did not observe.** Unobserved = `unmeasurable`/`error`,
+  never a fabricated pass/fail.
+- After ingesting, **verify against the live dashboard / DB**, not just the CLI
+  return. (Premature "it's done" claims, before the write was confirmed, have
+  been a real failure mode.)
 
-## Step 3 — Emit the ingest document
+## Step 3 — Emit + write back
 
-Produce one JSON document per `docs/ingest-contract.md`:
-top-level `site_domain` + `taxonomy_version` (from the brief) + `captures[]`
-(one `CaptureRecord` per variable). Validate before writing:
+One JSON document per `docs/ingest-contract.md`: top-level `site_domain` +
+`taxonomy_version` (from the brief) + `captures[]`. Then:
 
 ```bash
 seomate ingest --file audit.json --dry-run   # reports all problems, writes nothing
-```
-
-## Step 4 — Write it back
-
-```bash
 seomate ingest --file audit.json             # writes audit + captures
-seomate inspect <printed-audit-id>           # confirm
+seomate inspect <printed-audit-id>            # confirm on the dashboard
 ```
 
-The audit then appears on the dashboard exactly like a natively-run audit.
+The audit then appears on the dashboard exactly like a natively-run one.
+
+## Deferred vs unmeasurable
+
+If a source is off by **business choice** (e.g. the Backlinks subscription),
+mark those captures `unmeasurable` and set `value.deferred = true` +
+`value.deferral_reason`, so the dashboard can separate "deferred by choice" from
+"genuinely cannot measure." Do not silently fold them into plain unmeasurable.
 
 ## Scope
 
-This runbook is **Phase 1 (diagnostic)** only. Phase 2 (execution: fixing
-the issues the diagnostic found, the systematized version of the manual
-P1-20 canonical fix) is separate and not covered here.
+Phase 1 (diagnostic) only. Phase 2 (executing the fixes the diagnostic found,
+the systematized version of the manual P1-20 canonical fix) is separate.
 
-## Why the loop ends in `ingest`, not an API call
+## Reference: a worked run
 
-The session reaches Postgres directly, so `ingest` reuses the auditor's own
-models and keeps `seomate-be` read-only. See `docs/ingest-contract.md`
-"Why this path".
-
-## What the brief contains (verified)
-
-`seomate export-brief` against the current taxonomy (`47872f06b860`)
-produces **232 active variables**, populated as follows:
-
-- `definition`: 226 / 232
-- `data_sources` (Step 4): 226 / 232 (top-level union: 396 distinct source strings)
-- `verification` (Step 5), `cost` (Step 6), `citations`, `weight_rationale`: 226 / 232
-- `rules` (Step 1.5): 81 / 232 (only variables with an explicit evaluation
-  step have rules; the rest are read-a-value variables)
-- `hard_dependencies` (Step 7 `depends_on`): 48 / 232
-
-The ~6 variables without `definition`/`data_sources` are edge entries
-(headers or sparsely-specified variables); the session treats a variable
-with no data source as `unmeasurable` unless it can determine the source
-from context.
-
-**Count note:** the taxonomy parses to **232** active variables, while the
-cloud audits to date attempted **226** and the project has informally used
-"226". The 6-variable gap is unreconciled and worth a one-time check
-(whether those 6 are genuinely new variables to audit or parser edge
-entries). It does not block the loop; flag it before treating 232 as the
-official target.
+The 2026-06-01 pixelettetech.com audit drove coverage to 186/233 measured using
+exactly this loop across every source above. Full method + the source-by-source
+findings are in the vault (`agent-driven-audit`, the audit-findings analysis).
+The taxonomy parses to **232** active variables (233 capture rows).
