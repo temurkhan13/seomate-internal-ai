@@ -750,6 +750,59 @@ def plan_fixes_cmd(
         typer.echo(f"Full plan -> {out}")
 
 
+@app.command(name="apply-fixes")
+def apply_fixes_cmd(
+    audit_id: str = typer.Argument(..., help="The audit UUID to generate fix artifacts for."),
+    cache: Path = typer.Option(
+        ...,
+        "--cache",
+        "-c",
+        help="The gather cache directory for this site (from `seomate gather`).",
+        exists=True,
+        file_okay=False,
+        resolve_path=True,
+    ),
+    out: Path | None = typer.Option(
+        None, "--out", "-o", help="Write the full apply manifest JSON here.", resolve_path=True,
+    ),
+) -> None:
+    """Generate concrete fix artifacts for an audit's automatable findings.
+
+    Runs the executor in PROPOSE mode: for each session-automatable work order it
+    builds the real artifact (llms.txt body, sitemap priority map, JSON-LD blocks,
+    orphan internal-link plan) from the gather cache, each with its verify
+    criterion. It does NOT write to the target site , applying the artifacts
+    needs the site's repo/CMS access + per-change approval. Manual work orders
+    (human/owner/budget) are routed onward, not fabricated.
+    """
+    import json
+
+    from seomate.agent import build_apply_manifest, plan_fixes
+
+    try:
+        plan = asyncio.run(plan_fixes(audit_id))
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1) from e
+
+    manifest = build_apply_manifest(plan, cache)
+
+    typer.echo(f"Site:                {manifest['site_domain']}")
+    typer.echo(f"Audit:               {manifest['audit_id']}")
+    typer.echo(f"Mode:                {manifest['mode']} (no writes to the target site)")
+    typer.echo(f"Artifacts generated: {manifest['artifacts_generated']}")
+    typer.echo(f"Manual work orders:  {manifest['manual_work_orders']}")
+    typer.echo("")
+    typer.echo("Generated fix artifacts (review, then apply with site access):")
+    for a in manifest["generated"]:
+        typer.echo(f"  [{a['variable_id']}] -> {a['apply_to']}  ({a['artifact_kind']})")
+        typer.echo(f"      verify: {a['verify']}")
+    if out:
+        out.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
+        typer.echo("")
+        typer.echo(f"Full apply manifest -> {out}")
+
+
 def _redact_url(url: str) -> str:
     """Replace the password component in a SQLAlchemy URL for safe display."""
     if "@" not in url or "://" not in url:
