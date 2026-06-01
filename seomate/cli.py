@@ -698,6 +698,58 @@ def gather(
     typer.echo(f"Wrote {result.out_dir / 'manifest.json'}. Next: read the manifest + brief, evaluate, then `seomate ingest`.")
 
 
+@app.command(name="plan-fixes")
+def plan_fixes_cmd(
+    audit_id: str = typer.Argument(..., help="The audit UUID to plan fixes for (from `seomate inspect` / the dashboard)."),
+    out: Path | None = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Write the full plan JSON here (default: print a summary only).",
+        resolve_path=True,
+    ),
+) -> None:
+    """Build a remediation plan from a completed audit's failed/partial captures.
+
+    The diagnostic -> execution handoff. Joins each actionable finding with its
+    remediation spec (how to fix it, what it needs, how to verify) and prints a
+    prioritised plan grouped by who can action it: session-automatable wins
+    first, then owner/human/offsite/budget. Writes nothing to the site , this
+    produces the work orders an executor (a fixing session or a human) consumes.
+    """
+    import json
+
+    from seomate.agent import plan_fixes
+
+    try:
+        plan = asyncio.run(plan_fixes(audit_id))
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1) from e
+
+    typer.echo(f"Site:               {plan['site_domain']}")
+    typer.echo(f"Audit:              {plan['audit_id']}")
+    typer.echo(f"Actionable findings: {plan['actionable_findings']} (failed + partial)")
+    typer.echo("")
+    typer.echo("By who can action it:")
+    for cls, n in sorted(plan["by_fix_class"].items()):
+        typer.echo(f"  {cls:8} {n}")
+    typer.echo("")
+    typer.echo(f"Session-automatable now ({len(plan['session_automatable'])}): {', '.join(plan['session_automatable']) or 'none'}")
+    if plan["needs_remediation_authoring"]:
+        typer.echo(f"No authored spec yet ({len(plan['needs_remediation_authoring'])}): {', '.join(plan['needs_remediation_authoring'])}")
+    typer.echo("")
+    typer.echo("Top work orders (prioritised):")
+    for w in plan["work_orders"][:12]:
+        r = w["remediation"]
+        typer.echo(f"  [{r['fix_class']}/{'auto' if r['automatable'] else 'manual'}] {w['variable_id']} ({w['diagnostic_status']}) , {r['concrete_change'][:90]}")
+
+    if out:
+        out.write_text(json.dumps(plan, indent=2, default=str), encoding="utf-8")
+        typer.echo("")
+        typer.echo(f"Full plan -> {out}")
+
+
 def _redact_url(url: str) -> str:
     """Replace the password component in a SQLAlchemy URL for safe display."""
     if "@" not in url or "://" not in url:
