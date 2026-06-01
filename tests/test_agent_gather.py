@@ -18,6 +18,7 @@ import respx
 
 from seomate.agent.gather import (
     _analyze_html,
+    _derive_brand,
     _derive_keywords,
     _market_for,
     _norm_domain,
@@ -86,6 +87,17 @@ def test_derive_keywords_from_pages():
     assert by_url["https://abcd.com/"]["intent"] == "navigational"
 
 
+def test_derive_brand_from_homepage_title():
+    pages = [
+        {"url": "https://pixelettetech.com/", "title": "Pixelette Technologies | Shaping Future Tech"},
+        {"url": "https://pixelettetech.com/ai", "title": "AI"},
+    ]
+    # brand comes from the homepage title's leading segment, not the bare domain label
+    assert _derive_brand("pixelettetech.com", pages) == "Pixelette Technologies"
+    # no usable homepage title -> fall back to domain label
+    assert _derive_brand("abcd.com", [{"url": "https://abcd.com/x", "title": "x"}]) == "Abcd"
+
+
 @respx.mock
 @pytest.mark.asyncio
 async def test_gather_honest_availability(tmp_path: Path, monkeypatch):
@@ -116,6 +128,8 @@ async def test_gather_honest_availability(tmp_path: Path, monkeypatch):
     assert "knowledge_graph" in result.unavailable_sources
     # dataforseo unconfigured -> reported, not silently passed
     assert any("dataforseo" in name for name in result.unavailable_sources)
+    # LLM-citation gathering also reports unavailable when DataForSEO is unset
+    assert "llm_citations" in result.unavailable_sources
 
     # manifest always written + well-formed
     manifest = json.loads((tmp_path / "manifest.json").read_text())
