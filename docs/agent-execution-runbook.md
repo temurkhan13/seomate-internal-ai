@@ -83,10 +83,45 @@ dropped, but it reads "needs manual triage". To improve coverage, add a
 `RemediationSpec` for that variable (it's a single dataclass entry). This is the
 highest-leverage way to make the execution side more turnkey over time.
 
+## Step 2a — Generate fix artifacts (`seomate apply-fixes`)
+
+```bash
+seomate apply-fixes <audit-id> --cache audit-cache --out apply-manifest.json
+```
+
+For each **session-automatable** work order, the executor builds the **real fix
+artifact** from the gather cache , deterministically, no fabrication:
+
+| Variable | Artifact generated |
+|---|---|
+| P6-18 | the actual `llms.txt` body (from crawl + entity description) |
+| P2-42 | the per-URL sitemap `<priority>` map (home 1.0 / service 0.8 / blog 0.5 / utility 0.3) |
+| P6-19 | Organization JSON-LD with the real NAP (from GBP/KG) |
+| P1-21 / P1-42 | Article + Person JSON-LD template + the list of posts that need it |
+| P2-28 / P1-24 | the orphan internal-link plan (which core page links to each of the orphans) |
+
+Each artifact carries its `verify` criterion. Manual work orders
+(human/owner/budget) are routed onward with their spec, not given a fake fix.
+
+### Safety model: propose, not push
+`apply-fixes` runs in **propose mode** , it generates artifacts for review and
+writes the apply manifest, but does **not** write to the target website.
+Rationale: SEOMATE is the audit platform; the audited site is a separate
+property whose repo/CMS this process does not own, and editing live production
+is a gated action. Applying the artifacts needs the site's repo/CMS access +
+per-change approval. An `apply` mode would require the caller to pass a target
+adapter with write access; it is intentionally not implemented in the platform.
+
+## Step 3 — Apply (gated) + verify
+
+A human or an access-holding session applies the reviewed artifacts to the site,
+then re-audits to confirm each variable flips to `passed` (Step 3 above). The
+`verify` field is the explicit success criterion.
+
 ## Scope / status
 
-This is the **handoff + planning** half of Phase 2 (built 2026-06-01): the plan
-is produced and routed. The fully-automated executor loop (a session that reads a
-work order, makes the change, re-audits, and confirms , unattended) is the next
-build on top of this. The manual P1-20 canonical fix (vault [[May-31]]) is the
-worked precedent for that loop.
+Built 2026-06-01: the **handoff + planning** (`plan-fixes`) and the
+**propose-mode artifact generation** (`apply-fixes`) halves of Phase 2. What
+remains is the **gated apply** , wiring a target-site adapter (repo PR or CMS
+API) so an access-holding session can apply + auto-reverify unattended. The
+manual P1-20 canonical fix (vault [[May-31]]) is the worked precedent.
