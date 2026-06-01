@@ -62,6 +62,19 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
             for c in rows
         ]
         site_domain = audit.site_domain
+        audit_started = audit.started_at
+        # D4: is this the latest audit for the domain? planning against a stale
+        # audit is how the wrong-audit branch name slipped in. Surface it so the
+        # caller (and the target adapter) can refuse/warn rather than ship blind.
+        latest_id = (
+            await s.execute(
+                select(Audit.audit_id)
+                .where(Audit.site_domain == site_domain)
+                .order_by(Audit.started_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        is_latest = str(latest_id) == str(aid)
 
     work_orders = []
     for f in findings:
@@ -108,6 +121,9 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
     return {
         "audit_id": str(aid),
         "site_domain": site_domain,
+        "audit_started_at": str(audit_started) if audit_started else None,
+        "is_latest_audit": is_latest,
+        "latest_audit_id": str(latest_id) if latest_id else None,
         "actionable_findings": len(work_orders),
         "by_fix_class": by_class,
         "session_automatable": automatable_now,

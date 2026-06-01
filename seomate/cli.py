@@ -773,6 +773,10 @@ def apply_fixes_cmd(
         False, "--apply",
         help="GATED: actually open the draft PR (requires --target-repo + GITHUB_TOKEN). Without it, the target step is a dry run.",
     ),
+    allow_stale: bool = typer.Option(
+        False, "--allow-stale",
+        help="Override the guard that refuses to apply against a non-latest audit for the domain. Use only deliberately.",
+    ),
 ) -> None:
     """Generate concrete fix artifacts for an audit's automatable findings.
 
@@ -823,8 +827,10 @@ def apply_fixes_cmd(
         if not token:
             typer.echo("\n--target-repo given but GITHUB_TOKEN is not set; cannot apply.", err=True)
             raise typer.Exit(code=1)
+        if manifest.get("is_latest_audit") is False:
+            typer.echo(f"\nNOTE: audit {manifest['audit_id'][:8]} is NOT the latest for {manifest['site_domain']} (latest: {str(manifest.get('latest_audit_id'))[:8]}).", err=True)
         try:
-            tgt = GitHubPRTarget(target_repo, token, dry_run=not apply)
+            tgt = GitHubPRTarget(target_repo, token, dry_run=not apply, allow_stale=allow_stale)
             res = asyncio.run(tgt.apply(manifest))
         except ValueError as e:
             typer.echo(f"\ntarget error: {e}", err=True)

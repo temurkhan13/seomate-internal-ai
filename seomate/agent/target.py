@@ -64,7 +64,7 @@ class GitHubPRTarget:
     """Opens a draft PR against the audited site's repo with the auto-applyable
     artifacts, and lists the rest as a review checklist. Gated + dry-run-first."""
 
-    def __init__(self, repo: str, token: str, *, base_branch: str = "main", dry_run: bool = True):
+    def __init__(self, repo: str, token: str, *, base_branch: str = "main", dry_run: bool = True, allow_stale: bool = False):
         if not repo or "/" not in repo:
             raise ValueError("repo must be 'owner/name'")
         if not token:
@@ -73,6 +73,10 @@ class GitHubPRTarget:
         self._token = token
         self.base_branch = base_branch
         self.dry_run = dry_run
+        # D4 guard: refuse to open a LIVE PR against a stale (non-latest) audit
+        # unless explicitly forced. This is what would have caught the wrong-audit
+        # branch name. Dry-run always proceeds (it writes nothing).
+        self.allow_stale = allow_stale
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", "Accept": "application/vnd.github+json"}
@@ -100,8 +104,13 @@ class GitHubPRTarget:
 
         domain = manifest.get("site_domain", "site")
         title = f"SEOMATE fixes for {domain} ({len(files)} auto + {len(manual)} to review)"
+        # provenance stamp (D2): the audit this PR derives from, unavoidably in the body.
+        latest_note = "latest audit for this domain" if manifest.get("is_latest_audit") else (
+            f"NOT the latest audit (latest: `{manifest.get('latest_audit_id', '?')}`)"
+        )
         body_lines = [
             f"Automated SEO fixes from the SEOMATE audit `{manifest.get('audit_id', '')}`.",
+            f"Provenance: {latest_note}. Audit started: {manifest.get('audit_started_at', '?')}.",
             "",
             f"## Auto-applied in this PR ({len(files)} file(s))",
         ]
@@ -122,11 +131,31 @@ class GitHubPRTarget:
         files, manual, title, body = self._plan(manifest, branch)
 
         if self.dry_run:
+            stale_note = ""
+            if manifest.get("is_latest_audit") is False:
+                stale_note = (
+                    f" WARNING: audit {str(manifest.get('audit_id'))[:8]} is NOT the latest for "
+                    f"{manifest.get('site_domain')} (latest is {str(manifest.get('latest_audit_id'))[:8]}). "
+                    "A live apply would be refused unless allow_stale=True."
+                )
             return TargetResult(
                 dry_run=True, repo=self.repo, branch=branch,
                 files_written=list(files), manual_checklist=manual,
                 pr_title=title, pr_body=body,
-                note="DRY RUN , no PR opened. Re-run with dry_run=False (and a write token) to open a draft PR.",
+                note="DRY RUN , no PR opened. Re-run with dry_run=False (and a write token) to open a draft PR." + stale_note,
+            )
+
+        # D4 guard: refuse a LIVE apply against a stale audit unless forced.
+        if manifest.get("is_latest_audit") is False and not self.allow_stale:
+            return TargetResult(
+                dry_run=False, repo=self.repo, branch=branch, files_written=[],
+                manual_checklist=manual, pr_title=title, pr_body=body,
+                errors=[
+                    f"refusing to apply: audit {str(manifest.get('audit_id'))[:8]} is not the latest "
+                    f"for {manifest.get('site_domain')} (latest {str(manifest.get('latest_audit_id'))[:8]}). "
+                    "Re-plan against the latest audit, or pass allow_stale=True to override."
+                ],
+                note="BLOCKED , stale audit. No PR opened.",
             )
 
         errors: list[str] = []
