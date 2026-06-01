@@ -765,17 +765,29 @@ def apply_fixes_cmd(
     out: Path | None = typer.Option(
         None, "--out", "-o", help="Write the full apply manifest JSON here.", resolve_path=True,
     ),
+    target_repo: str | None = typer.Option(
+        None, "--target-repo",
+        help="GATED: GitHub repo 'owner/name' of the AUDITED SITE to open a fix PR against. Needs GITHUB_TOKEN env with write access. Omit to stay in propose mode.",
+    ),
+    apply: bool = typer.Option(
+        False, "--apply",
+        help="GATED: actually open the draft PR (requires --target-repo + GITHUB_TOKEN). Without it, the target step is a dry run.",
+    ),
 ) -> None:
     """Generate concrete fix artifacts for an audit's automatable findings.
 
-    Runs the executor in PROPOSE mode: for each session-automatable work order it
-    builds the real artifact (llms.txt body, sitemap priority map, JSON-LD blocks,
-    orphan internal-link plan) from the gather cache, each with its verify
-    criterion. It does NOT write to the target site , applying the artifacts
-    needs the site's repo/CMS access + per-change approval. Manual work orders
-    (human/owner/budget) are routed onward, not fabricated.
+    Default (no --target-repo): PROPOSE mode , builds the real artifacts
+    (llms.txt body, sitemap priority map, JSON-LD blocks, orphan link plan) from
+    the gather cache, writes nothing.
+
+    With --target-repo (GATED): opens a DRAFT pull request against the audited
+    site's repo with the auto-applyable file artifacts + a review checklist for
+    the rest. Token comes from GITHUB_TOKEN env (never a CLI arg). Defaults to a
+    dry run; pass --apply to actually open the PR. Never commits to the default
+    branch, never auto-merges , a human reviews + merges, then you re-audit.
     """
     import json
+    import os
 
     from seomate.agent import build_apply_manifest, plan_fixes
 
@@ -797,10 +809,38 @@ def apply_fixes_cmd(
     for a in manifest["generated"]:
         typer.echo(f"  [{a['variable_id']}] -> {a['apply_to']}  ({a['artifact_kind']})")
         typer.echo(f"      verify: {a['verify']}")
+
     if out:
         out.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
         typer.echo("")
         typer.echo(f"Full apply manifest -> {out}")
+
+    # ── GATED: target-site apply ──────────────────────────────────────────────
+    if target_repo:
+        from seomate.agent.target import GitHubPRTarget
+
+        token = os.environ.get("GITHUB_TOKEN", "")
+        if not token:
+            typer.echo("\n--target-repo given but GITHUB_TOKEN is not set; cannot apply.", err=True)
+            raise typer.Exit(code=1)
+        try:
+            tgt = GitHubPRTarget(target_repo, token, dry_run=not apply)
+            res = asyncio.run(tgt.apply(manifest))
+        except ValueError as e:
+            typer.echo(f"\ntarget error: {e}", err=True)
+            raise typer.Exit(code=1) from e
+
+        typer.echo("")
+        typer.echo(f"Target:   {res.repo}  (branch {res.branch})")
+        typer.echo(f"Apply:    {'DRY RUN' if res.dry_run else 'LIVE'}")
+        typer.echo(f"Files to write: {', '.join(res.files_written) or 'none'}")
+        typer.echo(f"Needs manual integration: {len(res.manual_checklist)}")
+        if res.errors:
+            for e in res.errors:
+                typer.echo(f"  error: {e}", err=True)
+        if res.pr_url:
+            typer.echo(f"Draft PR: {res.pr_url}")
+        typer.echo(res.note)
 
 
 def _redact_url(url: str) -> str:
