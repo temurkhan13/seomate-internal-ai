@@ -229,18 +229,50 @@ def _clean(s: str | None) -> str:
 def _derive_keywords(pages: list[dict]) -> list[dict]:
     """Keyword seeds from the site's own targeting (slug + title + H1)."""
     seeds = []
+    _NAV = {"", "about-us", "contact-us", "about", "contact", "home", "index", "privacy-policy", "terms", "sitemap"}
+    seen: set[str] = set()
     for p in pages:
         path = urlparse(p["url"]).path.strip("/")
         slug = path.split("/")[-1] if path else "home"
-        kw = slug.replace("-", " ").replace("_", " ").strip()
-        if not kw or len(kw) > 60:
-            # fall back to H1
-            kw = (p.get("h1") or [""])[0][:60]
-        intent = "navigational" if path in ("", "about-us", "contact-us", "about", "contact") else (
-            "informational" if "/blog/" in p["url"] else "commercial")
-        if kw:
-            seeds.append({"keyword": kw, "target_url": p["url"], "intent": intent})
+        # slug -> keyword: split on -/_, drop pure-number and date tokens, lowercase
+        tokens = [t for t in re.split(r"[-_]+", slug) if t and not re.fullmatch(r"\d{1,4}", t)]
+        kw = " ".join(tokens).strip().lower()
+        # prefer a clean H1 when the slug is empty, too long, or too short to be a phrase
+        if not kw or len(kw) > 60 or len(tokens) < 2:
+            h1 = _clean((p.get("h1") or [""])[0]).lower()
+            if 2 <= len(h1.split()) <= 8 and len(h1) <= 60:
+                kw = h1
+        if not kw:
+            continue
+        last = path.split("/")[-1]
+        intent = (
+            "navigational" if (path in _NAV or last in _NAV)
+            else "informational" if "/blog/" in p["url"] or "/resources/" in p["url"]
+            else "commercial"
+        )
+        key = kw.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        seeds.append({"keyword": kw, "target_url": p["url"], "intent": intent})
     return seeds
+
+
+def _derive_brand(domain: str, pages: list[dict]) -> str:
+    """Brand name: prefer the homepage title's leading segment, else the domain.
+
+    The domain label ('pixelettetech') is a poor brand string. The homepage
+    <title> usually leads with the real brand ('Pixelette Technologies | ...').
+    """
+    home = next((p for p in pages if urlparse(p["url"]).path.strip("/") in ("", "home")), None)
+    if home and home.get("title"):
+        # title is often "Brand Name | tagline" or "Brand Name - tagline"
+        lead = re.split(r"\s[|\-–—]\s", _clean(home["title"]))[0].strip()
+        # guard against a tagline-first title: keep it short + word-like
+        if 2 <= len(lead) <= 40 and not lead.lower().startswith(("home", "welcome")):
+            return lead
+    label = domain.split(".")[0].replace("-", " ")
+    return label.title()
 
 
 async def _gather_robots(client: httpx.AsyncClient, domain: str, out_dir: Path) -> SourceResult:
@@ -346,6 +378,73 @@ async def _gather_kg(client: httpx.AsyncClient, domain: str, brand: str, out_dir
         return SourceResult("knowledge_graph", True, summary={"found": bool(top), "name": top.get("name") if top else None, "has_detailed": bool(top.get("detailedDescription")) if top else False})
     except Exception as e:  # noqa: BLE001
         return SourceResult("knowledge_graph", False, reason=str(e)[:80])
+
+
+# one model per provider keeps cost bounded; these are the AI Optimization models
+# verified live 2026-06-01. If a name is retired, the call records unavailable.
+_LLM_PROVIDERS = [
+    ("perplexity", "sonar"),
+    ("chat_gpt", "gpt-4o-mini"),
+    ("claude", "claude-sonnet-4-5"),
+    ("gemini", "gemini-2.5-flash"),
+]
+
+
+async def _gather_llm_citations(client: httpx.AsyncClient, domain: str, brand: str, out_dir: Path) -> SourceResult:
+    """DataForSEO AI Optimization: does the brand get cited by the major LLMs?
+
+    Feeds P6-26/27/28/31 (Perplexity / ChatGPT-Claude-Gemini citation freq,
+    sentiment, hallucination resistance). Brand prompts (cited when named) +
+    category prompts (the real GEO test: surfaced for unbranded queries?).
+    Bounded: 1 model per provider x a small prompt set. Honest availability.
+    """
+    auth = _dfs_auth()
+    if not auth:
+        return SourceResult("llm_citations", False, reason="DATAFORSEO_LOGIN/PASSWORD not set (AI Optimization skipped)")
+    H = {"Authorization": auth, "Content-Type": "application/json"}
+    prompts = [
+        {"id": "brand_direct", "kind": "brand", "text": f"What is {brand} and what services do they offer?"},
+        {"id": "brand_trust", "kind": "brand", "text": f"Is {brand} a legitimate and trustworthy company?"},
+        {"id": "cat_services", "kind": "category", "text": f"Who are the best companies offering the kind of services {brand} provides?"},
+    ]
+    out: dict[str, Any] = {"brand": brand, "by_provider": {}}
+    cost = 0.0
+    any_ok = False
+    for prov, model in _LLM_PROVIDERS:
+        out["by_provider"][prov] = {"model": model, "responses": {}}
+        for p in prompts:
+            try:
+                r = await client.post(
+                    f"https://api.dataforseo.com/v3/ai_optimization/{prov}/llm_responses/live",
+                    headers=H, json=[{"user_prompt": p["text"], "model_name": model, "web_search": True}], timeout=120,
+                )
+                j = r.json()
+                cost += float(j.get("cost") or 0)
+                task = (j.get("tasks") or [{}])[0]
+                res = (task.get("result") or [None])[0]
+                if task.get("status_code") == 20000 and res is not None:
+                    any_ok = True
+                    blob = json.dumps(res).lower()
+                    out["by_provider"][prov]["responses"][p["id"]] = {
+                        "kind": p["kind"],
+                        "cites_brand": brand.lower() in blob,
+                        "cites_domain": domain.lower() in blob,
+                        "response": res,
+                    }
+                else:
+                    out["by_provider"][prov]["responses"][p["id"]] = {"error": task.get("status_message", "no result")[:60]}
+            except Exception as e:  # noqa: BLE001
+                out["by_provider"][prov]["responses"][p["id"]] = {"error": str(e)[:60]}
+    out["_cost_gbp"] = round(cost, 4)
+    _write(out_dir, "llm_citations.json", out)
+    if not any_ok:
+        return SourceResult("llm_citations", False, reason="AI Optimization returned no results (check DataForSEO plan/model names)", cost_gbp=round(cost, 4))
+    # quick summary: category-query citation count (the GEO signal)
+    cat_cites = sum(
+        1 for prov in out["by_provider"].values() for pid, rr in prov["responses"].items()
+        if rr.get("kind") == "category" and rr.get("cites_brand")
+    )
+    return SourceResult("llm_citations", True, cost_gbp=round(cost, 4), summary={"providers": len(_LLM_PROVIDERS), "category_citations": cat_cites})
 
 
 # ─── DataForSEO (paid; bounded) ────────────────────────────────────────────────
@@ -464,10 +563,10 @@ async def gather(domain: str, out_dir: str | Path, *, market_override: dict | No
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     market = market_override or _market_for(domain)
-    brand = domain.split(".")[0].replace("-", " ").title()
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
         crawl_res, pages = await _gather_crawl(client, domain, out_dir)
+        brand = _derive_brand(domain, pages)  # from homepage title, not the bare domain label
         keywords = _derive_keywords(pages)
         _write(out_dir, "keywords.json", keywords)
 
@@ -480,9 +579,10 @@ async def gather(domain: str, out_dir: str | Path, *, market_override: dict | No
             _gather_kg(client, domain, brand, out_dir),
         )
         dfs = await _gather_dataforseo(client, domain, brand, market, keywords, out_dir)
+        llm = await _gather_llm_citations(client, domain, brand, out_dir)
         gsc = await _gather_gsc(client, domain, out_dir)
 
-    sources = [crawl_res, robots, psi, crux, wayback, kg, *dfs, gsc]
+    sources = [crawl_res, robots, psi, crux, wayback, kg, *dfs, llm, gsc]
     total_cost = round(sum(s.cost_gbp for s in sources), 4)
     manifest = {
         "domain": domain,
