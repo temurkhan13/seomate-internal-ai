@@ -332,6 +332,11 @@ def build_apply_manifest(plan: dict[str, Any], cache_dir: str | Path) -> dict[st
             })
     return {
         "site_domain": domain, "audit_id": plan["audit_id"], "mode": "propose",
+        # provenance (carried from the plan) so the target adapter can refuse to
+        # apply against a stale audit , the D4 guard.
+        "is_latest_audit": plan.get("is_latest_audit"),
+        "latest_audit_id": plan.get("latest_audit_id"),
+        "audit_started_at": plan.get("audit_started_at"),
         "artifacts_generated": len(generated),
         "manual_work_orders": len(manual),
         "generated": generated,

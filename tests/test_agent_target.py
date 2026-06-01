@@ -80,6 +80,42 @@ async def test_live_opens_draft_pr_on_fix_branch():
     assert res.files_written == ["public/llms.txt"]
 
 
+@pytest.mark.asyncio
+async def test_stale_audit_blocks_live_apply():
+    """D4 guard: a non-latest audit must NOT open a live PR unless forced."""
+    stale = {"site_domain": "x.com", "audit_id": "old", "is_latest_audit": False,
+             "latest_audit_id": "new", "generated": [], "manual": []}
+    res = await GitHubPRTarget("o/r", "tok", dry_run=False).apply(stale)
+    assert res.pr_url is None
+    assert res.errors and "refusing to apply" in res.errors[0]
+    assert "stale" in res.note.lower()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_stale_audit_proceeds_with_allow_stale():
+    """allow_stale=True overrides the guard (the deliberate-override path)."""
+    repo = "o/r"
+    respx.get(f"https://api.github.com/repos/{repo}/git/ref/heads/main").mock(
+        return_value=httpx.Response(200, json={"object": {"sha": "s"}}))
+    respx.post(f"https://api.github.com/repos/{repo}/git/refs").mock(return_value=httpx.Response(201, json={}))
+    respx.post(f"https://api.github.com/repos/{repo}/pulls").mock(
+        return_value=httpx.Response(201, json={"html_url": f"https://github.com/{repo}/pull/9"}))
+    stale = {"site_domain": "x.com", "audit_id": "old", "is_latest_audit": False,
+             "latest_audit_id": "new", "generated": [], "manual": []}
+    res = await GitHubPRTarget(repo, "tok", dry_run=False, allow_stale=True).apply(stale)
+    # not blocked , it reached GitHub and opened the PR
+    assert res.pr_url == f"https://github.com/{repo}/pull/9"
+
+
+@pytest.mark.asyncio
+async def test_dry_run_warns_on_stale():
+    stale = {"site_domain": "x.com", "audit_id": "old", "is_latest_audit": False,
+             "latest_audit_id": "new", "generated": [], "manual": []}
+    res = await GitHubPRTarget("o/r", "tok", dry_run=True).apply(stale)
+    assert "WARNING" in res.note and "not the latest".lower() in res.note.lower()
+
+
 @respx.mock
 @pytest.mark.asyncio
 async def test_live_surfaces_errors_without_partial_state():
