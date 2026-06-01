@@ -641,6 +641,63 @@ def snapshot_check(
     asyncio.run(_check())
 
 
+@app.command()
+def gather(
+    domain: str = typer.Option(
+        ...,
+        "--domain",
+        "-d",
+        help="Target domain to audit, e.g. 'abcd.com' (scheme/www optional).",
+    ),
+    out: Path = typer.Option(
+        Path("audit-cache"),
+        "--out",
+        "-o",
+        help="Directory to write the gathered data + manifest.json.",
+        resolve_path=True,
+    ),
+    location_code: int | None = typer.Option(
+        None,
+        "--location-code",
+        help="DataForSEO location code override (default: derived from the domain TLD; UK=2826, US=2840).",
+    ),
+) -> None:
+    """Gather every reachable data source for DOMAIN into a cache directory.
+
+    This is the deterministic data-collection half of the agent-driven audit.
+    A Claude session runs this, then reads the cache + the export-brief, applies
+    per-variable judgment, and emits an ingest document.
+
+    Auto-derives keyword seeds (from the site's own pages) and market (from the
+    TLD). Each source reports availability honestly: anything unconfigured or
+    failing is recorded ``unavailable`` so the session marks dependent variables
+    ``unmeasurable`` rather than guessing.
+
+    Sources: page crawl + link graph, robots/llms.txt, PageSpeed, CrUX, Wayback,
+    Knowledge Graph, and (when keys are set) DataForSEO SERP/Labs/Business/
+    backlinks + Google Search Console.
+    """
+    from seomate.agent import gather as run_gather
+
+    market_override = {"location_code": location_code, "country": "?", "label": f"override({location_code})"} if location_code else None
+    result = asyncio.run(run_gather(domain, out, market_override=market_override))
+
+    typer.echo(f"Domain:   {result.domain}")
+    typer.echo(f"Market:   {result.market.get('label')} (location_code {result.market.get('location_code')})")
+    typer.echo(f"Out dir:  {result.out_dir}")
+    typer.echo(f"Cost:     £{result.total_cost_gbp}")
+    typer.echo("")
+    typer.echo("Sources available:")
+    for name in result.available_sources:
+        typer.echo(f"  [ok]   {name}")
+    if result.unavailable_sources:
+        typer.echo("Sources unavailable (dependent variables -> unmeasurable):")
+        for name, reason in result.unavailable_sources.items():
+            typer.echo(f"  [skip] {name}: {reason}")
+    typer.echo("")
+    typer.echo(f"Wrote {result.out_dir / 'manifest.json'}. Next: read the manifest + brief, evaluate, then `seomate ingest`.")
+
+
 def _redact_url(url: str) -> str:
     """Replace the password component in a SQLAlchemy URL for safe display."""
     if "@" not in url or "://" not in url:
