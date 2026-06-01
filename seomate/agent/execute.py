@@ -57,6 +57,59 @@ def _rel(url: str) -> str:
     return urlparse(url).path or "/"
 
 
+# ── validation + curation (D1/D3: generators must never emit unvalidated or
+#    uncurated URLs , an artifact a human ships should need no hand-editing) ──────
+def _valid_pages(crawl: dict) -> list[dict]:
+    """Only pages the crawl actually fetched with a 200 status.
+
+    Drops error pages, non-200, and anything missing a URL. This is the
+    correctness guard: an emitted artifact links only to pages proven to exist.
+    """
+    out = []
+    for p in (crawl.get("pages") or []):
+        if not p.get("url") or p.get("error"):
+            continue
+        status = p.get("http_status")
+        if status is not None and status != 200:
+            continue
+        out.append(p)
+    return out
+
+
+def _humanize_slug(url: str) -> str:
+    """Last path segment -> Title Case words (fallback label)."""
+    seg = _rel(url).rstrip("/").split("/")[-1] or "home"
+    return seg.replace("-", " ").replace("_", " ").title()
+
+
+def _clean_label(title: str, url: str) -> str:
+    """A presentable link label: strip marketing suffixes/boilerplate.
+
+    Falls back to a humanized slug (never the raw URL path) when the title is
+    missing or is entirely marketing-stuffing that gets stripped away.
+    """
+    import re as _re
+    t = (title or "").split("|")[0].split(" - ")[0].strip()
+    # drop marketing-stuffing (Top/Best/#1/medal ... Clutch/Company 2024/...)
+    t = _re.sub(r"\s*(Top|Best|#?1|🥇)\b.*$", "", t).strip()
+    # if nothing presentable survives, humanize the slug rather than show a path
+    if not t or t.startswith("/"):
+        return _humanize_slug(url)
+    return t
+
+
+# utility/vanity routes that should not headline a key-pages list
+_VANITY_PATHS = {"/clutch", "/privacy-policy", "/terms", "/terms-conditions",
+                 "/cancellation-refund-policy", "/sitemap.xml", "/robots.txt"}
+
+
+def _is_key_page(p: dict) -> bool:
+    path = _rel(p["url"]).rstrip("/")
+    if "/blog/" in p["url"] or path in _VANITY_PATHS:
+        return False
+    return True
+
+
 # ── generators (one per automatable fix) ────────────────────────────────────────
 def _gen_llms_txt(cache: _Cache, domain: str) -> FixArtifact | None:
     crawl = cache.load("crawl.json")
@@ -73,17 +126,21 @@ def _gen_llms_txt(cache: _Cache, domain: str) -> FixArtifact | None:
         or kg.get("description")
         or "Technology company."
     ).strip()
-    # key pages = non-blog, shallow
-    key = [p for p in pages if "/blog/" not in p["url"]][:12]
-    lines = [
-        f"# {domain}",
-        f"> {desc}",
-        "",
-        "## Key pages",
-    ]
+    # key pages: validated (200, really crawled) + curated (no blog/vanity) +
+    # de-duped by path, with cleaned labels. Shallower paths first.
+    valid = _valid_pages(crawl)
+    key, seen = [], set()
+    for p in sorted(valid, key=lambda x: _rel(x["url"]).count("/")):
+        path = _rel(p["url"]).rstrip("/")
+        if not _is_key_page(p) or path in seen:
+            continue
+        seen.add(path)
+        key.append(p)
+        if len(key) >= 14:
+            break
+    lines = [f"# {domain}", f"> {desc}", "", "## Key pages"]
     for p in key:
-        title = (p.get("title") or _rel(p["url"])).split("|")[0].strip()
-        lines.append(f"- [{title}]({p['url']})")
+        lines.append(f"- [{_clean_label(p.get('title'), p['url'])}]({p['url']})")
     body = "\n".join(lines) + "\n"
     return FixArtifact(
         variable_id="P6-18", apply_to=f"https://{domain}/llms.txt", artifact_kind="file",

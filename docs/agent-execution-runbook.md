@@ -112,16 +112,38 @@ is a gated action. Applying the artifacts needs the site's repo/CMS access +
 per-change approval. An `apply` mode would require the caller to pass a target
 adapter with write access; it is intentionally not implemented in the platform.
 
-## Step 3 — Apply (gated) + verify
+## Step 3 — Apply via a draft PR (gated) + verify
 
-A human or an access-holding session applies the reviewed artifacts to the site,
-then re-audits to confirm each variable flips to `passed` (Step 3 above). The
-`verify` field is the explicit success criterion.
+When you have the **audited site's GitHub repo + a write token**, `apply-fixes`
+can open a draft PR with the auto-applyable artifacts:
+
+```bash
+export GITHUB_TOKEN=...        # write access to the SITE's repo (not SEOMATE's)
+# dry run first (default): shows exactly what it would do, opens nothing
+seomate apply-fixes <audit-id> --cache audit-cache --target-repo owner/site-repo
+# then, to actually open the draft PR:
+seomate apply-fixes <audit-id> --cache audit-cache --target-repo owner/site-repo --apply
+```
+
+**Layered safety (by design):**
+- The token is read from `GITHUB_TOKEN` env, never a CLI arg (stays out of shell history).
+- It opens a **draft PR** on a `seomate/fixes-<audit>` branch , never commits to
+  the default branch, never auto-merges. A human reviews + merges.
+- It defaults to **dry run**; `--apply` is required to actually open the PR.
+- Only `file`-kind artifacts (e.g. `llms.txt`) are auto-written. `snippet`/`map`/
+  `plan` artifacts and all human/owner/budget work orders go into the PR body as
+  a **review checklist** , the adapter does not pretend to integrate
+  site-specific templates/build steps.
+
+After the PR is merged, re-audit each affected variable and confirm it flips to
+`passed`. The `verify` field on each artifact is the explicit success criterion.
 
 ## Scope / status
 
-Built 2026-06-01: the **handoff + planning** (`plan-fixes`) and the
-**propose-mode artifact generation** (`apply-fixes`) halves of Phase 2. What
-remains is the **gated apply** , wiring a target-site adapter (repo PR or CMS
-API) so an access-holding session can apply + auto-reverify unattended. The
-manual P1-20 canonical fix (vault [[May-31]]) is the worked precedent.
+Built 2026-06-01, the full Phase 2 spine: **plan-fixes** (handoff + routing),
+**apply-fixes** propose mode (real artifact generation), and the **gated
+GitHub-PR target adapter** (draft PR, dry-run-first). A fixing session with a
+site's repo token can now go diagnosis -> draft PR end to end; everything
+destructive stays behind review + an explicit `--apply`. CMS-API targets (for
+non-repo sites) are the natural next adapter, same gated shape. The manual P1-20
+canonical fix (vault [[May-31]]) is the worked precedent.

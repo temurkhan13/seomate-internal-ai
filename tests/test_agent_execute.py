@@ -11,6 +11,9 @@ import json
 from pathlib import Path
 
 from seomate.agent.execute import (
+    _clean_label,
+    _is_key_page,
+    _valid_pages,
     build_apply_manifest,
     can_generate,
     execute_work_order,
@@ -67,6 +70,56 @@ def test_orphan_plan_no_self_links(tmp_path: Path):
     # /blog and /blog/post-one are orphaned (0 inbound); none may link from itself
     for entry in plan:
         assert entry["orphan"] not in entry["add_links_from"], f"self-link for {entry['orphan']}"
+
+
+def test_valid_pages_drops_errors_and_non_200():
+    crawl = {"pages": [
+        {"url": "https://x.com/a", "http_status": 200},
+        {"url": "https://x.com/b", "http_status": 404},
+        {"url": "https://x.com/c", "error": "timeout"},
+        {"url": "https://x.com/d"},  # no status -> kept (crawl didn't record one)
+        {"http_status": 200},        # no url -> dropped
+    ]}
+    urls = [p["url"] for p in _valid_pages(crawl)]
+    assert urls == ["https://x.com/a", "https://x.com/d"]
+
+
+def test_is_key_page_excludes_blog_and_vanity():
+    assert _is_key_page({"url": "https://x.com/ai-development-services"}) is True
+    assert _is_key_page({"url": "https://x.com/blog/some-post"}) is False
+    assert _is_key_page({"url": "https://x.com/clutch"}) is False        # vanity
+    assert _is_key_page({"url": "https://x.com/privacy-policy"}) is False
+
+
+def test_clean_label_strips_marketing_never_returns_raw_path():
+    # marketing-stuffed title -> humanized slug, NOT the raw path
+    out = _clean_label("Top AI Development Company 2024 \U0001F947 on Clutch", "https://x.com/ai-development-services")
+    assert out == "Ai Development Services"
+    assert not out.startswith("/")
+    # clean title passes through
+    assert _clean_label("Custom Software Development", "https://x.com/c") == "Custom Software Development"
+    # empty title -> humanized slug
+    assert _clean_label("", "https://x.com/web-development-services") == "Web Development Services"
+
+
+def test_llms_txt_curated_no_vanity_no_broken(tmp_path: Path):
+    crawl = {"base": "https://abcd.com", "pages": [
+        {"url": "https://abcd.com/", "title": "ABCD | Home", "meta_description": "We build AI.", "http_status": 200},
+        {"url": "https://abcd.com/ai-services", "title": "Top AI Company 2024 \U0001F947 on Clutch", "http_status": 200},
+        {"url": "https://abcd.com/clutch", "title": "Clutch", "http_status": 200},   # vanity -> excluded
+        {"url": "https://abcd.com/blog/post", "title": "Post", "http_status": 200},  # blog -> excluded
+        {"url": "https://abcd.com/dead", "title": "Dead", "http_status": 404},        # non-200 -> excluded
+    ]}
+    (tmp_path / "crawl.json").write_text(json.dumps(crawl))
+    (tmp_path / "entity.json").write_text(json.dumps({"kg": {"itemListElement": []}}))
+    res = execute_work_order("P6-18", tmp_path, "abcd.com")
+    body = res["content"]
+    assert "/clutch" not in body          # vanity filtered
+    assert "/blog/post" not in body       # blog filtered
+    assert "/dead" not in body            # non-200 filtered
+    assert "on Clutch" not in body        # marketing label cleaned
+    assert "[Ai Services]" in body        # humanized fallback label
+    assert "We build AI." in body         # real description
 
 
 def test_unknown_variable_routes_to_manual_not_fabricated(tmp_path: Path):
