@@ -56,6 +56,23 @@ class IngestError(ValueError):
         super().__init__("; ".join(problems))
 
 
+def _parse_dt(value: Any) -> datetime | None:
+    """Parse an ISO timestamp from the ingest doc, tolerant of 'Z' and None.
+
+    Returns a timezone-aware datetime, or None if the value is missing/unparseable
+    (the caller then falls back to now()).
+    """
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
 def _capture_orm_from_record(record: CaptureRecord) -> Capture:
     """Map a validated CaptureRecord to a Capture ORM row.
 
@@ -207,7 +224,20 @@ async def ingest_audit(payload: dict[str, Any]) -> UUID:
     anomalies = meta["anomalies"]
     final_status = _derive_final_status(captures, meta["status"], anomalies)
 
-    # 1. Open the audit row (running).
+    # Resolve timestamps up front so started_at <= completed_at always holds.
+    # Honour the ingest doc's timestamps when supplied (an agent run has its own
+    # real start/finish); otherwise stamp now. Guard against the inversion that
+    # produced negative durations on the dashboard: if started_at would be after
+    # completed_at, clamp started_at to completed_at.
+    now = datetime.now(timezone.utc)
+    started_at = _parse_dt(meta.get("started_at")) or now
+    completed_at = _parse_dt(meta.get("completed_at")) or now
+    if started_at > completed_at:
+        started_at = completed_at
+
+    # 1. Open the audit row (running). Set started_at explicitly , do NOT rely
+    # on the server-default now(), which is stamped at insert time and drifts
+    # from the Python-stamped completed_at in phase 3.
     async with session_scope() as s:
         s.add(
             Audit(
@@ -216,6 +246,7 @@ async def ingest_audit(payload: dict[str, Any]) -> UUID:
                 config_snapshot=meta["config_snapshot"],
                 taxonomy_version=meta["taxonomy_version"],
                 status=AuditStatus.RUNNING.value,
+                started_at=started_at,
             )
         )
 
@@ -236,7 +267,7 @@ async def ingest_audit(payload: dict[str, Any]) -> UUID:
             .where(Audit.audit_id == audit_id)
             .values(
                 status=final_status.value,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=completed_at,
                 total_cost_gbp=Decimal(str(total_cost)),
                 variables_attempted=len(captures),
                 variables_passed=counts[CaptureStatus.PASSED],

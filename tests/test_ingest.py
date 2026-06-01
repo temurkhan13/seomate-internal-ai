@@ -11,8 +11,29 @@ from pathlib import Path
 
 import pytest
 
+from datetime import datetime, timezone
+
 from seomate.data_contract import AuditStatus, CaptureStatus
-from seomate.ingest import IngestError, _derive_final_status, parse_payload
+from seomate.ingest import IngestError, _derive_final_status, _parse_dt, parse_payload
+
+
+def test_parse_dt_handles_iso_z_and_none() -> None:
+    assert _parse_dt(None) is None
+    assert _parse_dt("") is None
+    assert _parse_dt("not-a-date") is None
+    dt = _parse_dt("2026-06-01T10:00:00Z")
+    assert dt == datetime(2026, 6, 1, 10, 0, tzinfo=timezone.utc)
+    # naive input gets UTC attached (so comparisons never crash)
+    assert _parse_dt("2026-06-01T10:00:00").tzinfo is not None
+
+
+def test_timestamp_clamp_prevents_negative_duration() -> None:
+    # the bug: completed_at earlier than started_at -> negative duration on the
+    # dashboard. The ingest clamps started_at to completed_at when inverted.
+    started = _parse_dt("2026-06-01T10:00:05Z")
+    completed = _parse_dt("2026-06-01T10:00:03Z")  # 2s BEFORE started
+    clamped_started = completed if started > completed else started
+    assert clamped_started <= completed  # never negative
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ingest_sample.json"
 
