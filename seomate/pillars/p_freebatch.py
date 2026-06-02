@@ -2425,77 +2425,9 @@ from seomate.utils.sitemap import (  # noqa: E402
 )
 
 
-async def _fetch_sitemap_lastmods(primary_url: str, *, max_urls: int = 500) -> list[date]:
-    """Best-effort: walk the site's sitemap(s) and collect <lastmod> dates.
-
-    Same discovery cascade as utils/sitemap.discover_urls — tries each
-    default path, recurses into sitemap indexes once. Errors return an
-    empty list so the extractor degrades to unmeasurable gracefully.
-    """
-    from urllib.parse import urljoin, urlsplit
-
-    parts = urlsplit(primary_url)
-    if not parts.scheme or not parts.netloc:
-        return []
-    base = f"{parts.scheme}://{parts.netloc}"
-    out: list[date] = []
-
-    async with httpx.AsyncClient(
-        timeout=30.0,
-        follow_redirects=True,
-        headers={"User-Agent": "SEOMATE-Auditor/0.1 (+https://pixelettetech.com)"},
-    ) as client:
-        for path in DEFAULT_SITEMAP_PATHS:
-            try:
-                resp = await client.get(urljoin(base, path))
-            except httpx.RequestError:
-                continue
-            if resp.status_code >= 400:
-                continue
-            try:
-                root = ET.fromstring(resp.text)
-            except ET.ParseError:
-                continue
-            tag = root.tag.rsplit("}", 1)[-1] if "}" in root.tag else root.tag
-            if tag == "sitemapindex":
-                # Recurse one level into nested sitemaps.
-                for sm in root.findall(f"{{{SITEMAP_NS}}}sitemap"):
-                    loc_el = sm.find(f"{{{SITEMAP_NS}}}loc")
-                    if loc_el is None or not loc_el.text:
-                        continue
-                    try:
-                        nested = await client.get(loc_el.text.strip())
-                    except httpx.RequestError:
-                        continue
-                    if nested.status_code >= 400:
-                        continue
-                    try:
-                        nested_root = ET.fromstring(nested.text)
-                    except ET.ParseError:
-                        continue
-                    for u in nested_root.findall(f"{{{SITEMAP_NS}}}url"):
-                        lm_el = u.find(f"{{{SITEMAP_NS}}}lastmod")
-                        if lm_el is not None and lm_el.text:
-                            d = _parse_iso_date(lm_el.text.strip())
-                            if d is not None:
-                                out.append(d)
-                                if len(out) >= max_urls:
-                                    return out
-                if out:
-                    return out
-                continue
-            if tag == "urlset":
-                for u in root.findall(f"{{{SITEMAP_NS}}}url"):
-                    lm_el = u.find(f"{{{SITEMAP_NS}}}lastmod")
-                    if lm_el is not None and lm_el.text:
-                        d = _parse_iso_date(lm_el.text.strip())
-                        if d is not None:
-                            out.append(d)
-                            if len(out) >= max_urls:
-                                return out
-                if out:
-                    return out
-    return out
+# NOTE: _fetch_sitemap_lastmods was removed when P2-04 became UNMEASURABLE
+# (indexation status needs GSC URL Inspection; sitemap freshness is P2-41/P1-42).
+# _parse_iso_date is retained , other date-parsing in this module uses it.
 
 
 def _parse_iso_date(text: str) -> date | None:
