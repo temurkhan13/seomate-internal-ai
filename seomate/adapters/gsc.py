@@ -20,6 +20,8 @@ from seomate.adapters._base import AdapterContext, BaseAdapter, tracked
 from seomate.adapters.google_oauth import GoogleOAuthManager, GoogleOAuthSettings
 
 SEARCH_CONSOLE_BASE = "https://searchconsole.googleapis.com/webmasters/v3"
+# URL Inspection lives on the v1 surface, not webmasters/v3.
+URL_INSPECTION_BASE = "https://searchconsole.googleapis.com/v1"
 
 
 class GSCAdapter(BaseAdapter):
@@ -80,5 +82,22 @@ class GSCAdapter(BaseAdapter):
         headers = await self._auth_headers()
         url = f"{SEARCH_CONSOLE_BASE}/sites/{quote(site_url, safe='')}/sitemaps"
         resp = await self.client.get(url, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    @tracked("searchconsole.urlInspection.inspect")
+    async def url_inspection(self, inspection_url: str, site_url: str) -> dict[str, Any]:
+        """POST urlInspection/index:inspect for a single URL.
+
+        Returns Google's authoritative index status for the URL
+        (``inspectionResult.indexStatusResult.coverageState`` /
+        ``verdict``). ``site_url`` is the owning property, e.g.
+        ``sc-domain:pixelettetech.com``. Requires owner/full OAuth on the
+        property; limits are 2000 inspections/day and 600/min per property.
+        """
+        headers = await self._auth_headers()
+        url = f"{URL_INSPECTION_BASE}/urlInspection/index:inspect"
+        body = {"inspectionUrl": inspection_url, "siteUrl": site_url}
+        resp = await self.client.post(url, json=body, headers=headers)
         resp.raise_for_status()
         return resp.json()

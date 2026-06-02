@@ -989,9 +989,10 @@ async def capture_p1_30(
             "very_image_heavy_pages": very_image_heavy[:20],
             "image_size_data_available": image_sizes_present > 0,
             "note": (
-                "image_size figures require load_resources=true on DataForSEO "
-                "Instant Pages. Cheap-layer audit reports counts only; trigger "
-                "a load_resources pass for image-weight diagnostics."
+                "image COUNTS are measured; image SIZE (bytes) needs the full "
+                "DataForSEO OnPage Resources crawl. Verified live that Instant "
+                "Pages load_resources=true returns images_size=0, so size-based "
+                "image-weight diagnostics are not available on this path."
             ),
         },
         rules=None,

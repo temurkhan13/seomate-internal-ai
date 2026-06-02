@@ -36,6 +36,7 @@ from seomate.adapters import (
     DataForSEOAdapter,
     EmbeddingsAdapter,
     EmbeddingsNotConfigured,
+    GSCAdapter,
     KnowledgeGraphAdapter,
     LlmAdapter,
     PSIAdapter,
@@ -232,6 +233,15 @@ class AuditOrchestrator:
         audits: dict[str, PageAudit] = {}
         errors: dict[str, str] = {}
 
+        # NOTE: we deliberately do NOT pass load_resources=true here. Verified
+        # live (2026-06): Instant Pages with load_resources=true + JS still
+        # returns images_size/scripts_size/stylesheets_size = 0 and
+        # total_transfer_size == encoded HTML size, i.e. it does not fetch
+        # sub-resources. True page/image weight (P2-30 / P1-30 size) needs the
+        # full async OnPage Resources crawl (task_post -> on_page/resources),
+        # which is a separate integration. Enabling the toggle here only adds
+        # cost + latency with no extra data.
+
         async def _one(url: str) -> None:
             async with sem:
                 try:
@@ -285,6 +295,7 @@ class AuditOrchestrator:
             EmbeddingsAdapter(self.adapter_ctx) as embeddings,
             PSIAdapter(self.adapter_ctx) as psi,
             LlmAdapter(self.adapter_ctx) as llm,
+            GSCAdapter(self.adapter_ctx) as gsc,
         ):
             audits, audit_errors = await self._prefetch_page_audits(urls, dataforseo)
             ranked_kw, domain_rank = await self._prefetch_keyword_data(dataforseo)
@@ -390,6 +401,7 @@ class AuditOrchestrator:
                 "embeddings": embeddings,
                 "psi": psi,
                 "llm": llm,
+                "gsc": gsc,
             }
 
             # Skip the (slow, expensive) LLM evaluator phase if only-mode

@@ -28,6 +28,7 @@ from seomate.adapters.embeddings import (
     EmbeddingsSettings,
     cosine_similarity,
 )
+from seomate.adapters.gsc import GSCAdapter
 from seomate.adapters.knowledge_graph import (
     KGNotConfigured,
     KGSearchHit,
@@ -64,6 +65,7 @@ __all__ = [
     "EmbeddingsAdapter",
     "EmbeddingsNotConfigured",
     "EmbeddingsSettings",
+    "GSCAdapter",
     "KGNotConfigured",
     "KGSearchHit",
     "KGSettings",
