@@ -126,7 +126,7 @@ def build_link_graph(
     ``site_host`` and its ``www.``-stripped form as internal so links that
     cross the apex / www boundary aren't mistakenly classified as external.
     """
-    host_l = site_host.lower().lstrip("www.")
+    host_l = site_host.lower().removeprefix("www.")
     graph = LinkGraph(site_host=site_host)
 
     # First pass: register canonical URLs as nodes so the link extraction
@@ -166,7 +166,7 @@ def _extract_links(
                 continue
             absolute = urljoin(source_url, href)
             target = _canonicalise(absolute)
-            target_host = (urlsplit(target).netloc or "").lower().lstrip("www.")
+            target_host = (urlsplit(target).netloc or "").lower().removeprefix("www.")
             is_internal = target_host == site_host_lower
             anchor_text = (el.get_text() or "").strip()
             rel = " ".join(el.get("rel") or []) if isinstance(el.get("rel"), list) else (
@@ -212,11 +212,11 @@ def _match_root(root: str, pages: Iterable[str]) -> str | None:
             return p
     # Fall back: find anything pointing to the bare host root path.
     parts = urlsplit(target)
-    bare_host = (parts.netloc or "").lower().lstrip("www.")
+    bare_host = (parts.netloc or "").lower().removeprefix("www.")
     for p in pages:
         p_parts = urlsplit(p)
         if (
-            (p_parts.netloc or "").lower().lstrip("www.") == bare_host
+            (p_parts.netloc or "").lower().removeprefix("www.") == bare_host
             and (p_parts.path or "/") in ("", "/")
         ):
             return p
@@ -225,7 +225,7 @@ def _match_root(root: str, pages: Iterable[str]) -> str | None:
 
 def _norm_for_match(url: str) -> str:
     parts = urlsplit(url)
-    host = (parts.netloc or "").lower().lstrip("www.")
+    host = (parts.netloc or "").lower().removeprefix("www.")
     path = (parts.path or "/").rstrip("/") or "/"
     return f"{host}{path}"
 

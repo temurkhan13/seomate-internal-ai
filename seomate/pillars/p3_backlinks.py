@@ -1961,13 +1961,17 @@ async def capture_p3_39(
     )
     rule_2 = RuleResult(
         rule_id=2,
-        rule_text="Top-1 referring domain's backlinks/pages ratio <= 5.0 (no single sitewide source)",
-        passed=top1_ratio <= 5.0,
+        rule_text="No sampled referring domain has a backlinks/pages ratio >= 5.0 (no sitewide source)",
+        passed=len(suspected_sitewide) == 0,
         evidence={
             "top1_ratio": top1_ratio,
             "top1_domain": (
                 top_domain_ratios[0].get("domain") if top_domain_ratios else None
             ),
+            "suspected_sitewide": [
+                {"domain": d.get("domain"), "ratio": d["ratio"]}
+                for d in suspected_sitewide
+            ],
         },
     )
 

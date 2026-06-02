@@ -894,8 +894,8 @@ def _url_paths_match(a: str, b: str) -> bool:
     """Compare two URLs by host + path only (ignore scheme + trailing slash)."""
     from urllib.parse import urlsplit
     ap, bp = urlsplit(a), urlsplit(b)
-    a_host = (ap.netloc or "").lower().lstrip("www.")
-    b_host = (bp.netloc or "").lower().lstrip("www.")
+    a_host = (ap.netloc or "").lower().removeprefix("www.")
+    b_host = (bp.netloc or "").lower().removeprefix("www.")
     a_path = (ap.path or "/").rstrip("/") or "/"
     b_path = (bp.path or "/").rstrip("/") or "/"
     return a_host == b_host and a_path == b_path
@@ -1294,7 +1294,7 @@ async def capture_p0_18(
         organic = [i for i in items if i.get("type") == "organic"][:10]
         big_brand_hosts: list[str] = []
         for it in organic:
-            domain = (it.get("domain") or "").lower().lstrip("www.")
+            domain = (it.get("domain") or "").lower().removeprefix("www.")
             url = (it.get("url") or "").lower()
             for frag in _BIG_BRAND_AUTHORITY_HOSTS:
                 if frag in domain or frag in url:

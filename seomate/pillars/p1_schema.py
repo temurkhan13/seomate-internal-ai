@@ -273,7 +273,7 @@ def _is_homepage(url: str, site: SiteData) -> bool:
     """Treat the configured primary_url and bare-host variants as homepage."""
     parts = urlsplit(url)
     primary = urlsplit(site.primary_url)
-    same_host = parts.netloc.lower().lstrip("www.") == primary.netloc.lower().lstrip("www.")
+    same_host = parts.netloc.lower().removeprefix("www.") == primary.netloc.lower().removeprefix("www.")
     path_root = parts.path in ("", "/", "/index.html", "/home")
     return same_host and path_root
 
