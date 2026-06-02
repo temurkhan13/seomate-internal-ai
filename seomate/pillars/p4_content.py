@@ -2799,22 +2799,20 @@ async def capture_p4_19(
             site=site,
             variable_id="P4-19",
             captured_at=captured_at,
-            status=CaptureStatus.UNMEASURABLE,
+            status=CaptureStatus.NOT_APPLICABLE,
             value={
-                "reason": "no UGC infrastructure detected (no comment/forum/discussion class patterns in any fetched HTML)",
-                "note": (
-                    "Per taxonomy 'Limited applicability: only relevant for "
-                    "sites with substantial UGC'. Commercial/agency sites "
-                    "without comment sections legitimately return "
-                    "UNMEASURABLE here — the variable does not apply."
+                "reason": (
+                    "no UGC infrastructure detected (no comment/forum/discussion "
+                    "class patterns in any fetched HTML). Per taxonomy this var has "
+                    "'limited applicability: only relevant for sites with substantial "
+                    "UGC', so for a site without it the variable does not apply."
                 ),
                 "applicability": "not_applicable",
-                "watchlist": True,
             },
             rules=None,
             evidence_weight=EvidenceWeight.SPECULATIVE,
             data_sources=["http.html_fetch", "composition.ugc_detection"],
-            errors=["not applicable"],
+            errors=None,
         )
 
     # UGC detected — quality eval not implemented in v1
