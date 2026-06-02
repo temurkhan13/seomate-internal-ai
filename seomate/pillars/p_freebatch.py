@@ -32,7 +32,12 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
-from seomate.adapters import AdapterContext, EmbeddingsAdapter, EmbeddingsNotConfigured
+from seomate.adapters import (
+    AdapterContext,
+    EmbeddingsAdapter,
+    EmbeddingsNotConfigured,
+    GSCAdapter,
+)
 from seomate.data_contract import (
     CaptureRecord,
     CaptureStatus,
@@ -2123,16 +2128,19 @@ async def capture_p1_45(
         status=CaptureStatus.UNMEASURABLE,
         value={
             "reason": (
-                "historical update cadence requires >= 2 audit snapshots; "
-                "this is a first-audit run"
+                "historical update cadence requires cross-audit historical "
+                "diffing: persisting each audit's per-page dates AND a step that "
+                "loads the prior audit and diffs against it. That diff step is "
+                "NOT implemented, so a second audit alone does not auto-populate "
+                "this — it needs the feature built, not just more runs."
             ),
-            "method": "cross_audit_htmldate_diff",
-            "next_audit_will_make_measurable": True,
+            "method": "cross_audit_htmldate_diff (not implemented)",
+            "auto_unlocks_on_next_audit": False,
         },
         rules=None,
         evidence_weight=EvidenceWeight.PROBABLE,
         data_sources=["composition.cross_audit_freshness_diff"],
-        errors=["only one audit snapshot available"],
+        errors=["cross-audit historical-diff feature not implemented"],
     )
 
 
@@ -2442,40 +2450,127 @@ def _parse_iso_date(text: str) -> date | None:
 async def capture_p2_04(
     ctx: AdapterContext,
     site: SiteData,
+    *,
+    gsc: GSCAdapter,
 ) -> CaptureRecord:
     """P2-04 — Indexation status per URL (Probable).
 
-    Unmeasurable in this auditor: true indexation status (indexed /
-    discovered-not-indexed / blocked) needs the GSC URL Inspection API, which
-    is not wired in. We deliberately do NOT substitute sitemap ``<lastmod>``
-    freshness (an earlier mislabel of this variable) — freshness/cadence is
-    P2-41 / P1-42 / P4-02, which is a different signal from indexation.
+    Reads Google's authoritative per-URL index status via the GSC URL
+    Inspection API (``coverageState`` / ``verdict``) for the audited
+    property and grades the share of inspected URLs Google reports as
+    indexed.
+
+    Capped at 60 inspections/audit (GSC allows 2000/day, 600/min; the
+    cap bounds wall-clock). Requires owner/full OAuth; degrades to
+    UNMEASURABLE when OAuth is absent or the property is inaccessible.
     """
-    # P2-04 is "Indexation status per URL" (taxonomy): whether each URL is
-    # actually in Google's index (indexed / discovered-not-indexed / blocked).
-    # That requires the GSC URL Inspection API, which is NOT wired into this
-    # auditor, so there is no honest pass/fail. An earlier version measured
-    # sitemap <lastmod> freshness, but that is a different signal (covered by
-    # P2-41 cadence, P1-42 and P4-02 dates) and must not stand in for indexation.
     captured_at = _now()
+    if not gsc.is_configured():
+        return _gsc_unmeasurable(
+            ctx, site, "P2-04", captured_at,
+            "GSC OAuth not configured (no GOOGLE_OAUTH_* credentials).",
+            ["GSC OAuth not configured"], EvidenceWeight.PROBABLE,
+        )
+    property_url = f"sc-domain:{site.domain}"
+    urls = [u for u in (site.urls or []) if u.startswith("http")][:60]
+    if not urls:
+        return _gsc_unmeasurable(
+            ctx, site, "P2-04", captured_at,
+            "No crawled URLs available to inspect.",
+            ["no urls"], EvidenceWeight.PROBABLE,
+        )
+
+    indexed_states = {"Submitted and indexed", "Indexed, not submitted in sitemap"}
+    results: list[dict[str, Any]] = []
+    failures = 0
+    for i, u in enumerate(urls):
+        try:
+            resp = await gsc.url_inspection(u, property_url)
+        except httpx.HTTPStatusError as exc:
+            if i == 0 and exc.response.status_code in (403, 404):
+                return _gsc_unmeasurable(
+                    ctx, site, "P2-04", captured_at,
+                    (
+                        f"GSC property {property_url} not accessible to the "
+                        f"authorised token (HTTP {exc.response.status_code})."
+                    ),
+                    [f"GSC {exc.response.status_code} for {property_url}"],
+                    EvidenceWeight.PROBABLE,
+                )
+            failures += 1
+            continue
+        idx = (resp.get("inspectionResult", {}) or {}).get("indexStatusResult", {}) or {}
+        results.append({
+            "url": u,
+            "coverageState": idx.get("coverageState", "unknown"),
+            "verdict": idx.get("verdict", "unknown"),
+        })
+
+    inspected = len(results)
+    if inspected == 0:
+        return _gsc_unmeasurable(
+            ctx, site, "P2-04", captured_at,
+            f"All {failures} URL inspections failed.",
+            [f"{failures} inspection failures"], EvidenceWeight.PROBABLE,
+        )
+
+    indexed_urls = {
+        r["url"] for r in results
+        if r["coverageState"] in indexed_states or r["verdict"] == "PASS"
+    }
+    not_indexed = [r for r in results if r["url"] not in indexed_urls]
+    indexed_rate = len(indexed_urls) / inspected
+    coverage_dist: dict[str, int] = {}
+    for r in results:
+        coverage_dist[r["coverageState"]] = coverage_dist.get(r["coverageState"], 0) + 1
+
+    rules = [
+        RuleResult(
+            rule_id=1,
+            rule_text="At least 85% of inspected URLs are indexed by Google",
+            passed=indexed_rate >= 0.85,
+            evidence={"indexed": len(indexed_urls), "inspected": inspected,
+                      "indexed_rate": round(indexed_rate, 3)},
+        ),
+        RuleResult(
+            rule_id=2,
+            rule_text="No inspected URL is blocked from indexing (verdict != FAIL)",
+            passed=all(r["verdict"] != "FAIL" for r in results),
+            evidence={"fail_verdict_urls": [r["url"] for r in results if r["verdict"] == "FAIL"][:20]},
+        ),
+    ]
+    if indexed_rate >= 0.85:
+        status = CaptureStatus.PASSED
+    elif indexed_rate >= 0.5:
+        status = CaptureStatus.PARTIAL
+    else:
+        status = CaptureStatus.FAILED
+
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P2-04",
         pillar="P2",
         captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        status=status,
         value={
-            "reason": (
-                "indexation status per URL requires the GSC URL Inspection API, "
-                "which is not wired into this auditor; no proxy is substituted"
-            ),
-            "covered_elsewhere": ["P2-41", "P1-42", "P4-02"],
+            "property": property_url,
+            "inspected": inspected,
+            "indexed": len(indexed_urls),
+            "not_indexed": len(not_indexed),
+            "indexed_rate": round(indexed_rate, 3),
+            "failures": failures,
+            "coverage_distribution": coverage_dist,
+            "not_indexed_examples": [
+                {"url": r["url"], "coverageState": r["coverageState"]}
+                for r in not_indexed
+            ][:20],
+            "cap_note": "inspection capped at 60 URLs/audit" if len(site.urls or []) > 60 else None,
         },
-        rules=None,
+        rules=rules,
         evidence_weight=EvidenceWeight.PROBABLE,
-        data_sources=["none"],
-        errors=["indexation status needs GSC URL Inspection (not configured)"],
+        data_sources=["google_search_console.urlInspection"],
+        errors=None,
     )
 
 
@@ -8521,20 +8616,26 @@ async def capture_p1_44(
         captured_at=captured_at,
         status=CaptureStatus.UNMEASURABLE,
         value={
-            "reason": "Content update magnitude needs >= 2 audit snapshots of the same site to diff against. First-audit run captures the baseline only.",
+            "reason": (
+                "Content update magnitude needs cross-audit historical diffing: "
+                "persisting each audit's per-page embeddings AND a step that "
+                "loads the prior audit's embeddings and diffs against them. That "
+                "diff step is NOT implemented (the capture stores only counts, "
+                "not the embeddings), so a second audit alone does not "
+                "auto-populate this — it needs the feature built, not just more runs."
+            ),
             "baseline_captured": {
                 "pages_with_main_text": pages_with_text,
                 "pages_with_embedding": pages_with_embedding,
                 "page_audits_total": len(site.page_audits),
             },
-            "next_audit_unlocks": (
-                "Once a second audit lands, P1-44 will diff the new text + "
-                "embeddings against this baseline and classify each page's "
-                "update as minor / substantive / no-change. Cosine similarity "
-                "between page embeddings is the primary signal; character "
-                "edit distance is a secondary confirmation."
+            "auto_unlocks_on_next_audit": False,
+            "feature_needed": (
+                "Persist per-page embeddings per audit + a diff step (cosine "
+                "similarity primary, char edit-distance secondary) classifying "
+                "each page minor / substantive / no-change."
             ),
-            "applicability": "first_audit_baseline_only",
+            "applicability": "needs_historical_diff_feature",
         },
         rules=None,
         evidence_weight=EvidenceWeight.PROBABLE,
@@ -8749,30 +8850,107 @@ async def capture_p2_38(
 # ─── P2-03 — Sitemap submission to GSC ──────────────────────────────────────
 
 
+def _gsc_unmeasurable(ctx, site, vid, captured_at, reason, errors, weight):
+    """Shared UNMEASURABLE record for the GSC-backed vars when OAuth is
+    absent or the token has no access to the audited property."""
+    return _build_record(
+        ctx=ctx,
+        site=site,
+        variable_id=vid,
+        pillar=vid.split("-")[0],
+        captured_at=captured_at,
+        status=CaptureStatus.UNMEASURABLE,
+        value={"reason": reason},
+        rules=None,
+        evidence_weight=weight,
+        data_sources=["google_search_console"],
+        errors=errors,
+    )
+
+
 @register_extractor("P2-03")
 async def capture_p2_03(
     ctx: AdapterContext,
     site: SiteData,
+    *,
+    gsc: GSCAdapter,
 ) -> CaptureRecord:
     """P2-03 — Sitemap submission to Google Search Console (Consensus).
 
-    Whether the site has submitted its XML sitemap to GSC. The
-    authoritative source is the GSC Sitemaps API which returns the
-    full submission history per property + last-read timestamp + any
-    errors Google encountered while crawling the sitemap.
+    Reads the GSC Sitemaps API for the audited property
+    (``sc-domain:{domain}``) and grades three rules: (1) at least one
+    sitemap is submitted/known to GSC, (2) Google logged no
+    sitemap-fetch errors, (3) Google downloaded it recently (<=30d).
 
-    From an external auditor's vantage we can verify the sitemap
-    EXISTS at conventional paths (which we already do — site.urls
-    populated from sitemap discovery means the sitemap is reachable)
-    but we cannot see GSC's submission status without OAuth into the
-    property owner's account.
-
-    Reports as UNMEASURABLE with the observable proxy surfaced (sitemap
-    reachable + URL count) and remediation path documented.
+    Requires owner/full OAuth on the property. Degrades to UNMEASURABLE
+    when OAuth is absent (any non-pixelette audit, or creds missing) or
+    the token has no access to this specific property.
     """
     captured_at = _now()
-    sitemap_reachable = bool(site.urls)
-    url_count_in_sitemap = len(site.urls or [])
+    if not gsc.is_configured():
+        return _gsc_unmeasurable(
+            ctx, site, "P2-03", captured_at,
+            "GSC OAuth not configured (no GOOGLE_OAUTH_* credentials).",
+            ["GSC OAuth not configured"], EvidenceWeight.CONSENSUS,
+        )
+    property_url = f"sc-domain:{site.domain}"
+    try:
+        resp = await gsc.list_sitemaps(property_url)
+    except httpx.HTTPStatusError as exc:
+        return _gsc_unmeasurable(
+            ctx, site, "P2-03", captured_at,
+            (
+                f"GSC property {property_url} not accessible to the authorised "
+                f"token (HTTP {exc.response.status_code}); owner OAuth covers "
+                "only verified properties."
+            ),
+            [f"GSC {exc.response.status_code} for {property_url}"],
+            EvidenceWeight.CONSENSUS,
+        )
+
+    sitemaps = resp.get("sitemap", []) or []
+    total_errors = sum(int(s.get("errors", 0) or 0) for s in sitemaps)
+    total_warnings = sum(int(s.get("warnings", 0) or 0) for s in sitemaps)
+    downloads = [s.get("lastDownloaded", "")[:10] for s in sitemaps if s.get("lastDownloaded")]
+    most_recent = max(downloads) if downloads else None
+    days_since: int | None = None
+    if most_recent:
+        try:
+            days_since = (captured_at.date() - datetime.strptime(most_recent, "%Y-%m-%d").date()).days
+        except ValueError:
+            days_since = None
+
+    submitted = len(sitemaps) > 0
+    no_errors = total_errors == 0
+    recently_read = days_since is not None and days_since <= 30
+
+    rules = [
+        RuleResult(
+            rule_id=1,
+            rule_text="At least one sitemap is submitted to / known by GSC",
+            passed=submitted,
+            evidence={"sitemaps_count": len(sitemaps),
+                      "paths": [s.get("path") for s in sitemaps][:10]},
+        ),
+        RuleResult(
+            rule_id=2,
+            rule_text="Google logged no sitemap-fetch errors",
+            passed=no_errors,
+            evidence={"errors": total_errors, "warnings": total_warnings},
+        ),
+        RuleResult(
+            rule_id=3,
+            rule_text="Google has downloaded the sitemap recently (<=30 days)",
+            passed=recently_read,
+            evidence={"most_recent_download": most_recent, "days_since": days_since},
+        ),
+    ]
+    if not submitted:
+        status = CaptureStatus.FAILED
+    elif no_errors and recently_read:
+        status = CaptureStatus.PASSED
+    else:
+        status = CaptureStatus.PARTIAL
 
     return _build_record(
         ctx=ctx,
@@ -8780,37 +8958,23 @@ async def capture_p2_03(
         variable_id="P2-03",
         pillar="P2",
         captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        status=status,
         value={
-            "reason": (
-                "GSC submission status is gated behind owner OAuth via Google "
-                "Search Console API. SEOMATE's external-audit positioning "
-                "doesn't include GSC auth today, so we cannot see (a) whether "
-                "the sitemap has been submitted, (b) GSC's last-read timestamp, "
-                "or (c) any sitemap-fetch errors Google has logged."
-            ),
-            "observable_proxy": {
-                "sitemap_reachable_externally": sitemap_reachable,
-                "url_count_in_sitemap": url_count_in_sitemap,
-                "note": (
-                    "Sitemap being reachable at the conventional path is a "
-                    "PREREQUISITE for GSC submission but doesn't prove it. "
-                    "Google can also auto-discover sitemaps from robots.txt; "
-                    "many sites are 'submitted' implicitly via discovery "
-                    "rather than explicit submission."
-                ),
-            },
-            "remediation_paths": [
-                "Wire GSC OAuth flow + GSC Sitemaps API adapter — site owner authorises SEOMATE to read their GSC property; we then pull submission history + last-read + error count.",
-                "Owner exports the Sitemaps panel from GSC manually and uploads CSV.",
+            "property": property_url,
+            "sitemaps_submitted": len(sitemaps),
+            "total_errors": total_errors,
+            "total_warnings": total_warnings,
+            "most_recent_download": most_recent,
+            "days_since_download": days_since,
+            "sitemaps": [
+                {"path": s.get("path"), "lastDownloaded": s.get("lastDownloaded"),
+                 "errors": s.get("errors"), "warnings": s.get("warnings"),
+                 "isPending": s.get("isPending")}
+                for s in sitemaps[:20]
             ],
-            "watchlist": True,
         },
-        rules=None,
+        rules=rules,
         evidence_weight=EvidenceWeight.CONSENSUS,
-        data_sources=[
-            "http.sitemap_fetch",
-            "google_search_console.sitemaps (not wired)",
-        ],
-        errors=["GSC OAuth not wired"],
+        data_sources=["google_search_console.sitemaps"],
+        errors=None,
     )

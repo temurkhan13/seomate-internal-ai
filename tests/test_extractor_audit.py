@@ -27,7 +27,7 @@ from seomate.pillars._base import EXTRACTOR_REGISTRY
 from seomate.taxonomy import Catalog
 from seomate.utils.cost_tracker import CostTracker
 
-ORCH_ADAPTERS = {"dataforseo", "kg", "wikipedia", "wikidata", "embeddings", "psi", "llm"}
+ORCH_ADAPTERS = {"dataforseo", "kg", "wikipedia", "wikidata", "embeddings", "psi", "llm", "gsc"}
 # Active catalog vars intentionally without an extractor (retired Google-leak /
 # human-rated signals nobody can measure externally).
 RETIRED_NO_EXTRACTOR = {"P2-06", "P3-11", "P3-13", "P3-16", "P4-18", "P6-15"}
@@ -143,9 +143,24 @@ class _StubOff:
         return _call
 
 
+class _StubGSC:
+    """GSC: report unconfigured so the GSC-backed extractors (P2-03/P2-04)
+    short-circuit to UNMEASURABLE without any network. Unlike the other stubs
+    these extractors *call* ``is_configured()``, so it must be a method."""
+
+    def is_configured(self):
+        return False
+
+    def __getattr__(self, name):
+        async def _call(*a, **k):
+            return {}
+        return _call
+
+
 _STUBS = {
     "dataforseo": _StubDFS, "kg": _StubList, "wikipedia": _StubList,
     "wikidata": _StubList, "embeddings": _StubOff, "psi": _StubOff, "llm": _StubOff,
+    "gsc": _StubGSC,
 }
 
 

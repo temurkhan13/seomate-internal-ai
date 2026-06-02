@@ -926,11 +926,13 @@ async def capture_p2_30(
     """
     captured_at = _now()
     # P2-30 is total page weight (transferred bytes: HTML + CSS + JS + images +
-    # fonts). DataForSEO only returns that (total_transfer_size) when Instant
-    # Pages is called with load_resources=true, which the orchestrator does NOT
-    # (cost + speed). The available `size` field is the HTML document only, so
-    # pass/failing on it would falsely clear image/JS-heavy pages. Report honest
-    # UNMEASURABLE; HTML-document size is surfaced for reference only.
+    # fonts). VERIFIED LIVE (2026-06): DataForSEO Instant Pages does NOT return
+    # this even with load_resources=true + enable_javascript=true — sub-resource
+    # sizes come back 0 and total_transfer_size == encoded HTML. Real page weight
+    # needs the full async OnPage Resources crawl (task_post -> on_page/resources),
+    # a separate integration. The available `size` field is the HTML document
+    # only, so pass/failing on it would falsely clear image/JS-heavy pages.
+    # Report honest UNMEASURABLE; HTML-document size is surfaced for reference.
     audits = site.successful_audits
     indexable = [p for p in audits if p.is_indexable] if audits else []
     html_sizes = [p.page_size_bytes for p in indexable if p.page_size_bytes > 0]
@@ -942,9 +944,11 @@ async def capture_p2_30(
         status=CaptureStatus.UNMEASURABLE,
         value={
             "reason": (
-                "total page weight needs DataForSEO load_resources=true (not "
-                "enabled for cost/speed); only HTML-document size is available, "
-                "which is not page weight"
+                "total page weight needs the full DataForSEO OnPage Resources "
+                "crawl (task_post + on_page/resources); verified live that "
+                "Instant Pages load_resources=true does NOT return sub-resource "
+                "sizes. Only HTML-document size is available, which is not page "
+                "weight."
             ),
             "indexable_pages": len(indexable),
             "html_document_avg_bytes": int(sum(html_sizes) / len(html_sizes)) if html_sizes else 0,

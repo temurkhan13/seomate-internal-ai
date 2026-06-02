@@ -2763,15 +2763,17 @@ async def capture_p3_30(
         status=CaptureStatus.UNMEASURABLE,
         value={
             "reason": (
-                "disavow file is visible only to verified property owners "
-                "in Google Search Console; no public API exposes it. "
-                "External audits cannot read it."
+                "The Google disavow tool has NO read API — not public, and not "
+                "in the Search Console API even for verified owners. It is "
+                "upload-only. We confirmed full owner OAuth on this property "
+                "(siteFullUser), and it still exposes no endpoint that returns "
+                "the active disavow list. So this cannot be measured by any "
+                "automated path, regardless of access."
             ),
             "remediation": (
-                "to populate this variable, connect Google Search Console "
-                "ownership in a future platform release, or have the site "
-                "owner export the active disavow file and upload it as "
-                "supplementary audit input."
+                "The ONLY way to populate this is for the site owner to manually "
+                "export their active disavow file and upload it as supplementary "
+                "audit input. GSC OAuth (which we have) does not help here."
             ),
             "related": ["P3-29 — Toxic backlink presence (the disavow source-of-truth)"],
         },
