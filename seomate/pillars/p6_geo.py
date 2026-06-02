@@ -2005,7 +2005,7 @@ async def capture_p6_02(
     evals = site.llm_evaluations.get("quotability", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages found to evaluate"
         )
@@ -2112,7 +2112,7 @@ async def capture_p6_10(
     evals = site.llm_evaluations.get("definitional_clarity", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages found to evaluate"
         )
@@ -2228,7 +2228,7 @@ async def capture_p6_07(
     evals = site.llm_evaluations.get("original_research", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no article-like long-form pages eligible for original-research evaluation"
         )
@@ -2357,7 +2357,7 @@ async def capture_p6_31(
     evals = site.llm_evaluations.get("brand_hallucination", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "brand or GBP ground-truth missing — cannot run verification"
         )
@@ -2499,7 +2499,7 @@ async def capture_p6_22(
     evals = site.llm_evaluations.get("topic_depth", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no article-like pages with >= 400 words to evaluate"
         )
@@ -2623,7 +2623,7 @@ async def capture_p6_28(
     evals = site.llm_evaluations.get("brand_sentiment", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no brand configured for sentiment evaluation"
         )
@@ -2759,7 +2759,7 @@ async def capture_p6_23(
     classifications = site.llm_evaluations.get("time_sensitivity", {})
     if not classifications:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages to classify"
         )
@@ -2916,7 +2916,7 @@ async def capture_p6_05(
     evals = site.llm_evaluations.get("expert_quote", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no article-like substantive pages to evaluate"
         )
@@ -3042,7 +3042,7 @@ async def capture_p6_27(
     evals = site.llm_evaluations.get("brand_hallucination", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "brand or GBP ground-truth missing — brand_hallucination eval did not run"
         )
@@ -3195,7 +3195,7 @@ async def capture_p6_12(
     evals = site.llm_evaluations.get("brand_hallucination", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "brand_hallucination eval did not run (likely no brand/GBP ground truth)"
         )
