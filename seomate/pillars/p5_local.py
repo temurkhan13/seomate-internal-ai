@@ -1150,9 +1150,13 @@ async def capture_p5_25(
                 open_str = f"{open_.get('hour', '?'):02}:{open_.get('minute', 0):02}"
                 close_str = f"{close_.get('hour', '?'):02}:{close_.get('minute', 0):02}"
                 ranges.append({"open": open_str, "close": close_str})
+                # "Open 24 hours" appears two ways in DataForSEO: close hour 24,
+                # or a full 00:00->00:00 span. Closed days are null (handled
+                # above), so a non-null 00:00-00:00 span here means all-day.
                 if (
                     open_.get("hour") == 0 and open_.get("minute") == 0
-                    and close_.get("hour") == 24 and close_.get("minute") == 0
+                    and close_.get("minute") == 0
+                    and close_.get("hour") in (24, 0)
                 ):
                     open_24h_days.append(day)
             days_declared[day] = {"status": "open", "ranges": ranges}

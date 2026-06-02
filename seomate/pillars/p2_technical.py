@@ -925,49 +925,35 @@ async def capture_p2_30(
     against typical thresholds; flags pages exceeding 3 MB.
     """
     captured_at = _now()
+    # P2-30 is total page weight (transferred bytes: HTML + CSS + JS + images +
+    # fonts). DataForSEO only returns that (total_transfer_size) when Instant
+    # Pages is called with load_resources=true, which the orchestrator does NOT
+    # (cost + speed). The available `size` field is the HTML document only, so
+    # pass/failing on it would falsely clear image/JS-heavy pages. Report honest
+    # UNMEASURABLE; HTML-document size is surfaced for reference only.
     audits = site.successful_audits
-    if not audits:
-        return _unmeasurable(
-            ctx, site, "P2-30", EvidenceWeight.CONSENSUS, captured_at,
-            "no successful page audits",
-        )
-
-    indexable = [p for p in audits if p.is_indexable]
-    too_heavy = [
-        {"url": p.url, "page_size_bytes": p.page_size_bytes}
-        for p in indexable
-        if p.page_size_bytes > PAGE_WEIGHT_TOO_HEAVY_BYTES
-    ]
-    above_optimal = [
-        {"url": p.url, "page_size_bytes": p.page_size_bytes}
-        for p in indexable
-        if PAGE_WEIGHT_OPTIMAL_HI_BYTES < p.page_size_bytes <= PAGE_WEIGHT_TOO_HEAVY_BYTES
-    ]
-    sizes = [p.page_size_bytes for p in indexable if p.page_size_bytes > 0]
-
+    indexable = [p for p in audits if p.is_indexable] if audits else []
+    html_sizes = [p.page_size_bytes for p in indexable if p.page_size_bytes > 0]
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P2-30",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED
-        if len(too_heavy) == 0
-        else CaptureStatus.FAILED,
+        status=CaptureStatus.UNMEASURABLE,
         value={
+            "reason": (
+                "total page weight needs DataForSEO load_resources=true (not "
+                "enabled for cost/speed); only HTML-document size is available, "
+                "which is not page weight"
+            ),
             "indexable_pages": len(indexable),
-            "average_size_bytes": int(sum(sizes) / len(sizes)) if sizes else 0,
-            "max_size_bytes": max(sizes) if sizes else 0,
-            "too_heavy_count": len(too_heavy),
-            "too_heavy_urls": too_heavy[:20],
-            "above_optimal_but_acceptable": above_optimal[:20],
-            "thresholds": {
-                "optimal_max_bytes": PAGE_WEIGHT_OPTIMAL_HI_BYTES,
-                "too_heavy_above_bytes": PAGE_WEIGHT_TOO_HEAVY_BYTES,
-            },
+            "html_document_avg_bytes": int(sum(html_sizes) / len(html_sizes)) if html_sizes else 0,
+            "html_document_max_bytes": max(html_sizes) if html_sizes else 0,
         },
         rules=None,
         evidence_weight=EvidenceWeight.CONSENSUS,
         data_sources=["dataforseo.on_page.instant_pages"],
+        errors=["page weight (total_transfer_size) needs load_resources=true"],
     )
 
 

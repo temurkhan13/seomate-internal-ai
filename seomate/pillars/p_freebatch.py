@@ -2511,98 +2511,39 @@ async def capture_p2_04(
     ctx: AdapterContext,
     site: SiteData,
 ) -> CaptureRecord:
-    """P2-04 — Sitemap freshness via ``<lastmod>`` (Probable).
+    """P2-04 — Indexation status per URL (Probable).
 
-    Fetches the site's sitemap(s) directly and parses every URL's
-    ``<lastmod>``. Reports the distribution of declared modification
-    dates — a well-maintained sitemap mirrors the page-modification
-    reality captured at the HTML layer (P4-02). A sitemap full of
-    stale lastmod values often signals either abandoned content or a
-    misconfigured publishing pipeline.
+    Unmeasurable in this auditor: true indexation status (indexed /
+    discovered-not-indexed / blocked) needs the GSC URL Inspection API, which
+    is not wired in. We deliberately do NOT substitute sitemap ``<lastmod>``
+    freshness (an earlier mislabel of this variable) — freshness/cadence is
+    P2-41 / P1-42 / P4-02, which is a different signal from indexation.
     """
+    # P2-04 is "Indexation status per URL" (taxonomy): whether each URL is
+    # actually in Google's index (indexed / discovered-not-indexed / blocked).
+    # That requires the GSC URL Inspection API, which is NOT wired into this
+    # auditor, so there is no honest pass/fail. An earlier version measured
+    # sitemap <lastmod> freshness, but that is a different signal (covered by
+    # P2-41 cadence, P1-42 and P4-02 dates) and must not stand in for indexation.
     captured_at = _now()
-    lastmods = await _fetch_sitemap_lastmods(site.primary_url)
-    if not lastmods:
-        return _build_record(
-            ctx=ctx,
-            site=site,
-            variable_id="P2-04",
-            pillar="P2",
-            captured_at=captured_at,
-            status=CaptureStatus.UNMEASURABLE,
-            value={
-                "reason": (
-                    "no sitemap lastmod data available (sitemap missing, "
-                    "no <lastmod> entries, or only sitemap index found)"
-                ),
-            },
-            rules=None,
-            evidence_weight=EvidenceWeight.PROBABLE,
-            data_sources=["http.sitemap_xml_fetch"],
-            errors=["sitemap lastmod empty"],
-        )
-
-    today = _now().date()
-    ages = sorted([(today - d).days for d in lastmods])
-    median = ages[len(ages) // 2]
-    p75 = ages[int(0.75 * (len(ages) - 1))]
-    p95 = ages[int(0.95 * (len(ages) - 1))]
-    stale_count = sum(1 for a in ages if a > 730)  # > 2 years
-    fresh_count = sum(1 for a in ages if a <= 365)
-
-    rule_1 = RuleResult(
-        rule_id=1,
-        rule_text="Sitemap contains <lastmod> for the majority of URLs (>= 50%)",
-        passed=len(lastmods) >= 5,  # arbitrary floor, real test = "present at all"
-        evidence={
-            "urls_with_lastmod": len(lastmods),
-        },
-    )
-    rule_2 = RuleResult(
-        rule_id=2,
-        rule_text="Median <lastmod> age <= 12 months (sitemap broadly fresh)",
-        passed=median <= 365,
-        evidence={"median_age_days": median, "fresh_threshold_days": 365},
-    )
-    rule_3 = RuleResult(
-        rule_id=3,
-        rule_text="< 30% of URLs have <lastmod> older than 24 months",
-        passed=(stale_count / len(ages)) < 0.30,
-        evidence={
-            "stale_count": stale_count,
-            "stale_pct": round(stale_count / len(ages) * 100, 1),
-            "stale_threshold_days": 730,
-        },
-    )
-
-    rules = [rule_1, rule_2, rule_3]
-    overall_pass = all(r.passed for r in rules)
-
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P2-04",
         pillar="P2",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED if overall_pass else CaptureStatus.FAILED,
+        status=CaptureStatus.UNMEASURABLE,
         value={
-            "urls_with_lastmod": len(lastmods),
-            "median_age_days": median,
-            "p75_age_days": p75,
-            "p95_age_days": p95,
-            "min_age_days": ages[0],
-            "max_age_days": ages[-1],
-            "fresh_count": fresh_count,
-            "stale_count": stale_count,
-            "fresh_threshold_days": 365,
-            "stale_threshold_days": 730,
+            "reason": (
+                "indexation status per URL requires the GSC URL Inspection API, "
+                "which is not wired into this auditor; no proxy is substituted"
+            ),
+            "covered_elsewhere": ["P2-41", "P1-42", "P4-02"],
         },
-        rules=rules,
+        rules=None,
         evidence_weight=EvidenceWeight.PROBABLE,
-        data_sources=[
-            "http.sitemap_xml_fetch",
-            "composition.sitemap_lastmod_distribution",
-        ],
+        data_sources=["none"],
+        errors=["indexation status needs GSC URL Inspection (not configured)"],
     )
 
 
@@ -6177,7 +6118,7 @@ async def capture_p1_50(
     )
     rule_2 = RuleResult(
         rule_id=2,
-        rule_text=">=50% of pages have native or embedded video",
+        rule_text="Advisory (not required): video present on >=50% of pages",
         passed=pages_with_video_pct >= 50,
         evidence={
             "pages_with_video": pages_with_video,
@@ -6185,10 +6126,17 @@ async def capture_p1_50(
             "pages_image_only_count": len(pages_with_only_images),
             "pages_image_only_sample": [p["url"] for p in pages_with_only_images[:10]],
         },
+        notes=(
+            "Advisory only. The taxonomy defines multimedia PRESENCE/diversity "
+            "(images + any other format), not a video mandate, so this does not "
+            "gate the verdict."
+        ),
     )
 
     rules = [rule_1, rule_2]
-    overall = rule_1.passed and rule_2.passed
+    # Verdict = format diversity (rule_1). Video (rule_2) is an advisory bonus,
+    # not a requirement — the variable is "multimedia presence", not "video".
+    overall = rule_1.passed
 
     # Pick three richest pages as positive examples
     page_findings_sorted = sorted(
