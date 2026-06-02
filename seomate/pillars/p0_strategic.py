@@ -1207,33 +1207,27 @@ async def capture_p0_05(
         sorted(feature_counts.items(), key=lambda kv: kv[1], reverse=True)
     )
 
-    rule_1 = RuleResult(
-        rule_id=1,
-        rule_text="Every queried keyword has a SERP feature inventory recorded",
-        passed=len(per_kw) == len(serps),
-        evidence={
-            "queries_with_inventory": len(per_kw),
-            "queries_attempted": len(serps),
-        },
-    )
-
+    # P0-05 is a DESCRIPTIVE inventory (which SERP features Google shows per
+    # query) — there is no universal good/bad bar, so it is NOT_APPLICABLE, not
+    # a tautological PASS. The old rule "every queried keyword has an inventory"
+    # was always true: per_kw is built one-per-SERP and serp_results only ever
+    # holds successfully-fetched queries, so it could never fail.
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P0-05",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED if rule_1.passed else CaptureStatus.FAILED,
+        status=CaptureStatus.NOT_APPLICABLE,
         value={
             "queries_inspected": len(per_kw),
             "feature_frequency_across_queries": feature_counts_sorted,
             "per_keyword": per_kw,
             "note": (
-                "Single-point snapshot for top-N ranked keywords (default 10). "
-                "SERP feature inventory shifts day-to-day; weekly multi-audit "
-                "tracking gives the stable trend per Whitespark / Ahrefs."
+                "Descriptive inventory of SERP features per query (no pass/fail). "
+                "Single-point snapshot for top-N ranked keywords; shifts day-to-day."
             ),
         },
-        rules=[rule_1],
+        rules=None,
         evidence_weight=EvidenceWeight.CONSENSUS,
         data_sources=["serp.google.organic", "composition.serp_feature_inventory"],
     )
