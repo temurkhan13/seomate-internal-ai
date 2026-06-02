@@ -915,49 +915,94 @@ PAGE_WEIGHT_TOO_HEAVY_BYTES = 3_000_000    # 3 MB
 async def capture_p2_30(
     ctx: AdapterContext,
     site: SiteData,
-    *,
-    dataforseo: DataForSEOAdapter,  # noqa: ARG001
 ) -> CaptureRecord:
-    """P2-30 — Page weight distribution (Consensus, distribution).
+    """P2-30 — Page weight (Consensus).
 
-    Uses ``size`` (transfer size in bytes) and ``total_dom_size`` from
-    DataForSEO's Instant Pages output. Reports per-page distribution
-    against typical thresholds; flags pages exceeding 3 MB.
+    Total transfer weight (HTML + CSS + JS + images + fonts) read from the
+    Lighthouse ``total-byte-weight`` audit in the PSI results we already
+    fetch — no extra crawl or DataForSEO cost. (DataForSEO Instant Pages
+    does NOT return sub-resource sizes even with load_resources=true;
+    verified live 2026-06.) PSI runs on the primary URL(s), so this grades
+    the sampled page(s), not the full-site distribution. Flags > 3 MB.
     """
     captured_at = _now()
-    # P2-30 is total page weight (transferred bytes: HTML + CSS + JS + images +
-    # fonts). VERIFIED LIVE (2026-06): DataForSEO Instant Pages does NOT return
-    # this even with load_resources=true + enable_javascript=true — sub-resource
-    # sizes come back 0 and total_transfer_size == encoded HTML. Real page weight
-    # needs the full async OnPage Resources crawl (task_post -> on_page/resources),
-    # a separate integration. The available `size` field is the HTML document
-    # only, so pass/failing on it would falsely clear image/JS-heavy pages.
-    # Report honest UNMEASURABLE; HTML-document size is surfaced for reference.
-    audits = site.successful_audits
-    indexable = [p for p in audits if p.is_indexable] if audits else []
-    html_sizes = [p.page_size_bytes for p in indexable if p.page_size_bytes > 0]
+    results = [
+        r for r in site.psi_results.values()
+        if r.fetch_status == "ok" and r.total_byte_weight_bytes is not None
+    ]
+    if not results:
+        return _build_record(
+            ctx=ctx,
+            site=site,
+            variable_id="P2-30",
+            captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={
+                "reason": (
+                    "no PSI/Lighthouse total-byte-weight available (PSI not run "
+                    "for this site or returned no weight audit)"
+                ),
+            },
+            rules=None,
+            evidence_weight=EvidenceWeight.CONSENSUS,
+            data_sources=["psi.runPagespeed", "lighthouse.total-byte-weight"],
+            errors=["no PSI weight data"],
+        )
+
+    mb = 1024 * 1024
+    good_bytes = 3 * mb
+    poor_bytes = 5 * mb
+    per_page = [
+        {
+            "url": r.url,
+            "strategy": getattr(r.strategy, "value", str(r.strategy)),
+            "total_bytes": r.total_byte_weight_bytes,
+            "total_mb": round(r.total_byte_weight_bytes / mb, 2),
+            "image_bytes": r.image_bytes,
+            "image_mb": round(r.image_bytes / mb, 2) if r.image_bytes else None,
+        }
+        for r in results
+    ]
+    max_bytes = max(r.total_byte_weight_bytes for r in results)
+    over_good = [p for p in per_page if p["total_bytes"] > good_bytes]
+    over_poor = [p for p in per_page if p["total_bytes"] > poor_bytes]
+
+    rule_1 = RuleResult(
+        rule_id=1,
+        rule_text="Sampled page weight is <= 3 MB",
+        passed=not over_good,
+        evidence={"pages_over_3mb": over_good, "max_mb": round(max_bytes / mb, 2)},
+    )
+    rule_2 = RuleResult(
+        rule_id=2,
+        rule_text="No sampled page exceeds 5 MB",
+        passed=not over_poor,
+        evidence={"pages_over_5mb": over_poor},
+    )
+    if not over_good:
+        status = CaptureStatus.PASSED
+    elif not over_poor:
+        status = CaptureStatus.PARTIAL
+    else:
+        status = CaptureStatus.FAILED
+
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P2-30",
         captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        status=status,
         value={
-            "reason": (
-                "total page weight needs the full DataForSEO OnPage Resources "
-                "crawl (task_post + on_page/resources); verified live that "
-                "Instant Pages load_resources=true does NOT return sub-resource "
-                "sizes. Only HTML-document size is available, which is not page "
-                "weight."
-            ),
-            "indexable_pages": len(indexable),
-            "html_document_avg_bytes": int(sum(html_sizes) / len(html_sizes)) if html_sizes else 0,
-            "html_document_max_bytes": max(html_sizes) if html_sizes else 0,
+            "per_page": per_page,
+            "max_mb": round(max_bytes / mb, 2),
+            "thresholds_mb": {"good": 3, "poor": 5},
+            "scope": "PSI-sampled (primary URL + strategies), not full-site distribution",
         },
-        rules=None,
+        rules=[rule_1, rule_2],
         evidence_weight=EvidenceWeight.CONSENSUS,
-        data_sources=["dataforseo.on_page.instant_pages"],
-        errors=["page weight (total_transfer_size) needs load_resources=true"],
+        data_sources=[
+            "psi.runPagespeed", "lighthouse.total-byte-weight", "lighthouse.resource-summary",
+        ],
     )
 
 

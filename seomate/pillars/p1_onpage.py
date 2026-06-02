@@ -972,12 +972,25 @@ async def capture_p1_30(
         for p in indexable
         if p.images_count > 50
     ]
+    # Image SIZE (bytes) is not in DataForSEO Instant Pages, but Lighthouse's
+    # 'resource-summary' (in the PSI results we already fetch) gives image
+    # transfer bytes for the sampled page(s). Use it for the size dimension.
+    psi_images = [
+        {
+            "url": r.url,
+            "image_bytes": r.image_bytes,
+            "image_mb": round(r.image_bytes / (1024 * 1024), 2),
+        }
+        for r in site.psi_results.values()
+        if r.fetch_status == "ok" and r.image_bytes is not None
+    ]
+    size_available = image_sizes_present > 0 or bool(psi_images)
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P1-30",
         captured_at=captured_at,
-        status=CaptureStatus.PARTIAL if image_sizes_present == 0 else CaptureStatus.PASSED,
+        status=CaptureStatus.PASSED if size_available else CaptureStatus.PARTIAL,
         value={
             "indexable_pages": len(indexable),
             "average_images_per_page": round(
@@ -987,20 +1000,23 @@ async def capture_p1_30(
             else 0,
             "max_images_on_a_page": max(image_counts) if image_counts else 0,
             "very_image_heavy_pages": very_image_heavy[:20],
-            "image_size_data_available": image_sizes_present > 0,
+            "image_size_data_available": size_available,
+            "image_size_from_psi": psi_images,
             "note": (
-                "image COUNTS are measured; image SIZE (bytes) needs the full "
-                "DataForSEO OnPage Resources crawl. Verified live that Instant "
-                "Pages load_resources=true returns images_size=0, so size-based "
-                "image-weight diagnostics are not available on this path."
+                "image COUNTS measured from DataForSEO; image SIZE (bytes) read "
+                "from Lighthouse resource-summary in the PSI results (sampled "
+                "page[s])."
+                if psi_images
+                else "image COUNTS measured; image SIZE needs PSI/Lighthouse data, "
+                "which was not available for this site."
             ),
         },
         rules=None,
         evidence_weight=EvidenceWeight.CONSENSUS,
-        data_sources=["dataforseo.on_page.instant_pages"],
+        data_sources=["dataforseo.on_page.instant_pages", "lighthouse.resource-summary"],
         errors=None
-        if image_sizes_present > 0
-        else ["images_size unpopulated; image-weight rule not evaluable"],
+        if size_available
+        else ["image size unavailable (no PSI resource-summary)"],
     )
 
 

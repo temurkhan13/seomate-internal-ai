@@ -100,6 +100,12 @@ class PSIResult:
     audit_tap_targets_pass: bool | None = None         # deprecated by Lighthouse
     audit_content_width_pass: bool | None = None       # deprecated by Lighthouse
 
+    # Page weight, read from Lighthouse audits we already fetch (no extra cost):
+    # 'total-byte-weight' = total transfer bytes; 'resource-summary' image row =
+    # image transfer bytes. Feed P2-30 (page weight) + P1-30 (image size).
+    total_byte_weight_bytes: int | None = None
+    image_bytes: int | None = None
+
     error: str | None = None
 
 
@@ -304,6 +310,20 @@ def _result_from_psi_payload(
     crux_cls = crux_cls_raw / 100.0 if crux_cls_raw is not None else None
     crux_ttfb = _crux_ms("EXPERIMENTAL_TIME_TO_FIRST_BYTE")
 
+    def _audit_int(key: str) -> int | None:
+        a = audits.get(key) or {}
+        v = a.get("numericValue")
+        return int(v) if v is not None else None
+
+    total_byte_weight = _audit_int("total-byte-weight")
+    image_bytes: int | None = None
+    _rs_items = ((audits.get("resource-summary") or {}).get("details") or {}).get("items") or []
+    for _it in _rs_items:
+        if _it.get("resourceType") == "image":
+            _tb = _it.get("transferSize")
+            image_bytes = int(_tb) if _tb is not None else None
+            break
+
     return PSIResult(
         url=url,
         strategy=strategy,
@@ -335,5 +355,7 @@ def _result_from_psi_payload(
         audit_font_size_pass=None,
         audit_tap_targets_pass=None,
         audit_content_width_pass=None,
+        total_byte_weight_bytes=total_byte_weight,
+        image_bytes=image_bytes,
         error=None,
     )
