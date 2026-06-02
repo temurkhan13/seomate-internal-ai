@@ -17,21 +17,39 @@ export-brief`` writes the result to disk.
 """
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any
 
 from seomate.taxonomy import Catalog
 
+# The LLM-judgment variables: those whose verdict genuinely needs an LLM (they
+# read site.llm_evaluations). In the native run these go via the Anthropic API;
+# in the session-driven hybrid a Claude session evaluates them for free against
+# each variable's rubric and merge-ingests the verdicts. Keep this in sync with
+# the extractors that read site.llm_evaluations (a test enforces it).
+LLM_JUDGMENT_VARIABLES = frozenset({
+    "P0-17", "P1-37",
+    "P4-07", "P4-09", "P4-11", "P4-17", "P4-21", "P4-22", "P4-23",
+    "P6-02", "P6-05", "P6-07", "P6-10", "P6-12", "P6-22", "P6-23",
+    "P6-27", "P6-28", "P6-31",
+})
 
-def variable_brief(catalog: Catalog) -> list[dict[str, Any]]:
+
+def variable_brief(
+    catalog: Catalog, *, only: Collection[str] | None = None
+) -> list[dict[str, Any]]:
     """Return one brief entry per active (non-removed) variable.
 
     Each entry carries everything the session needs to diagnose that
     variable: its definition, evidence weight, the data sources that
     answer it, its Step 1.5 rules, citations, and the verification/cost
-    guidance from the taxonomy.
+    guidance from the taxonomy. If ``only`` is given, restrict to that set
+    of variable_ids (used by the scoped LLM-judgment brief).
     """
     entries: list[dict[str, Any]] = []
     for v in sorted(catalog, key=lambda x: x.variable_id):
+        if only is not None and v.variable_id not in only:
+            continue
         entries.append(
             {
                 "variable_id": v.variable_id,
@@ -59,8 +77,11 @@ def variable_brief(catalog: Catalog) -> list[dict[str, Any]]:
     return entries
 
 
-def build_brief(catalog: Catalog) -> dict[str, Any]:
-    """Build the full audit brief document from a Catalog.
+def build_brief(catalog: Catalog, *, only: Collection[str] | None = None) -> dict[str, Any]:
+    """Build the audit brief document from a Catalog.
+
+    ``only`` restricts the brief to a subset of variable_ids (e.g.
+    ``LLM_JUDGMENT_VARIABLES`` for the session-driven LLM-eval hybrid).
 
     Top-level fields:
       - ``taxonomy_version``: copy verbatim into the ingest document's
@@ -72,7 +93,7 @@ def build_brief(catalog: Catalog) -> dict[str, Any]:
         able to reach.
       - ``variables``: the per-variable instruction set.
     """
-    variables = variable_brief(catalog)
+    variables = variable_brief(catalog, only=only)
 
     all_sources: set[str] = set()
     for entry in variables:

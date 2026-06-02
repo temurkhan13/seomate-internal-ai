@@ -20,6 +20,7 @@ import pytest
 import seomate
 import seomate.pillars  # noqa: F401 - import populates EXTRACTOR_REGISTRY
 from seomate.adapters import AdapterContext
+from seomate.brief import LLM_JUDGMENT_VARIABLES, build_brief
 from seomate.data_contract import CaptureRecord, CaptureStatus
 from seomate.pillars import BrandIdentity, PageAudit, SiteData
 from seomate.pillars._base import EXTRACTOR_REGISTRY
@@ -148,6 +149,35 @@ _STUBS = {
 }
 
 
+# ── 4. Hybrid LLM-eval path (session evaluates the 19 judgment vars) ────────
+def test_llm_judgment_vars_are_real_and_llm_dependent():
+    """Every var in LLM_JUDGMENT_VARIABLES exists, has an extractor, and that
+    extractor genuinely reads site.llm_evaluations (so it's an LLM-judgment var,
+    not an arbitrary id). Guards the constant from drifting out of sync."""
+    cat = Catalog.from_file()
+    active = {v.variable_id for v in cat.all_variables(include_removed=False)}
+    for vid in LLM_JUDGMENT_VARIABLES:
+        assert vid in active, f"{vid} in LLM_JUDGMENT_VARIABLES is not an active var"
+        fn = EXTRACTOR_REGISTRY.get(vid)
+        assert fn is not None, f"{vid} has no registered extractor"
+        assert "llm_evaluations" in inspect.getsource(fn), (
+            f"{vid} is in LLM_JUDGMENT_VARIABLES but its extractor doesn't read "
+            "site.llm_evaluations (not actually LLM-dependent)"
+        )
+
+
+def test_scoped_brief_returns_only_llm_vars():
+    cat = Catalog.from_file()
+    brief = build_brief(cat, only=LLM_JUDGMENT_VARIABLES)
+    ids = {v["variable_id"] for v in brief["variables"]}
+    assert ids == set(LLM_JUDGMENT_VARIABLES)
+    assert brief["variable_count"] == len(LLM_JUDGMENT_VARIABLES)
+    # each scoped entry carries the rubric the session needs
+    for v in brief["variables"]:
+        assert "rules" in v and "definition" in v
+
+
+# ── 5. Smoke test: every extractor runs to a valid CaptureRecord ────────────
 @pytest.mark.parametrize("vid", sorted(EXTRACTOR_REGISTRY))
 def test_extractor_runs_to_valid_capture(vid: str):
     fn = EXTRACTOR_REGISTRY[vid]
