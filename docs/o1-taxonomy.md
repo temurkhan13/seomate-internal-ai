@@ -2400,7 +2400,9 @@ GSC API is free for the site owner. Composition logic is free.
 
 ---
 
-## P0-14 — Content gap analysis vs ranking competitors
+## P0-14 — Content gap analysis vs ranking competitors *(removed — moved to the Competitive Analysis module, June 2026)*
+
+Removed from the site audit in June 2026. Content-gap-vs-competitors is a comparative *insight*, not an intrinsic, fixable site-health item, so it belongs in the dedicated Competitive Analysis module (you vs N competitors: traffic, keyword positioning, backlinks, content gaps) rather than as an audit variable. The single-site audit stays purely intrinsic.
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Probable
@@ -5622,7 +5624,9 @@ Bundled.
 
 ---
 
-## P4-08 — Comprehensiveness vs SERP competitor average
+## P4-08 — Comprehensiveness vs SERP competitor average *(removed — moved to the Competitive Analysis module, June 2026)*
+
+Removed from the site audit in June 2026. Comprehensiveness-vs-SERP-competitors is a comparative *insight* (it ranks your depth against competitor pages on shared queries), not an intrinsic site-health item, so it belongs in the Competitive Analysis module rather than the audit.
 
 **Pillar:** Content Operations
 **Evidence weight:** Probable

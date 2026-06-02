@@ -2486,7 +2486,9 @@ async def capture_p4_24(
 # ─── P4-08 — Comprehensiveness vs SERP competitor average ──────────────────
 
 
-@register_extractor("P4-08")
+# P4-08 moved to the Competitive Analysis module (June 2026) — comparative
+# insight, not an audit variable; no longer registered as a site-audit extractor.
+# Logic retained here for reference / reuse by the module.
 async def capture_p4_08(
     ctx: AdapterContext,
     site: SiteData,
