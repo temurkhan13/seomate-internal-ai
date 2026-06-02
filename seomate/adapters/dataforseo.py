@@ -647,3 +647,37 @@ class DataForSEOAdapter(BaseAdapter):
         )
         response.raise_for_status()
         return response.json()
+
+    @rate_limited
+    @retry_transient()
+    @tracked("dataforseo_labs.competitors_domain", cost_calculator=_cost_from_dfs_response)
+    async def competitors_domain(
+        self,
+        target: str,
+        *,
+        location_code: int = 2826,  # United Kingdom
+        language_code: str = "en",
+        limit: int = 10,
+    ) -> dict:
+        """SERP-overlap competitor domains for the target. ~$0.02/call.
+
+        Returns domains that rank for the same keywords as the target, with
+        intersection counts + average positions. Keyword-overlap-based, so it
+        finds *search* competitors (which can differ from declared business
+        competitors) , use as a starting set the user can refine.
+
+        location_code defaults to UK (2826); for US use 2840.
+        """
+        body = [
+            {
+                "target": target,
+                "location_code": location_code,
+                "language_code": language_code,
+                "limit": limit,
+            }
+        ]
+        response = await self.client.post(
+            "/v3/dataforseo_labs/google/competitors_domain/live", json=body
+        )
+        response.raise_for_status()
+        return response.json()
