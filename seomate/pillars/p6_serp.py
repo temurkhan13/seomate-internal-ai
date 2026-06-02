@@ -86,7 +86,7 @@ def _build_record(
 
 
 def _domain_of(url: str) -> str:
-    return (urlsplit(url).netloc or "").lower().lstrip("www.")
+    return (urlsplit(url).netloc or "").lower().removeprefix("www.")
 
 
 # ─── SERP feature parsers ───────────────────────────────────────────────────
@@ -192,7 +192,7 @@ async def capture_p6_25(
     else:
         sampled = universe[:MAX_SERP_QUERIES]
 
-    domain = site.domain.lower().lstrip("www.")
+    domain = site.domain.lower().removeprefix("www.")
     results: list[dict[str, Any]] = []
     api_errors: list[str] = []
 

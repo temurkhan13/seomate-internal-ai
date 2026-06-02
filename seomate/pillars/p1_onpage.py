@@ -1642,11 +1642,11 @@ def _canonical_homepage(site: SiteData) -> str:
         return ""
     from urllib.parse import urlsplit
     target_parts = urlsplit(site.primary_url)
-    target_host = (target_parts.netloc or "").lower().lstrip("www.")
+    target_host = (target_parts.netloc or "").lower().removeprefix("www.")
     target_path = (target_parts.path or "/").rstrip("/") or "/"
     for url in site.link_graph.pages:
         p = urlsplit(url)
-        if (p.netloc or "").lower().lstrip("www.") == target_host:
+        if (p.netloc or "").lower().removeprefix("www.") == target_host:
             path = (p.path or "/").rstrip("/") or "/"
             if path == target_path:
                 return url
@@ -1848,7 +1848,7 @@ async def capture_p1_10(
             errors=["no SERPs"],
         )
 
-    our_host = site.domain.lower().lstrip("www.")
+    our_host = site.domain.lower().removeprefix("www.")
     findings: list[dict[str, Any]] = []
     lengths: list[int] = []
     queries_with_us: list[str] = []
@@ -1859,7 +1859,7 @@ async def capture_p1_10(
         for item in items:
             if item.get("type") != "organic":
                 continue
-            domain = (item.get("domain") or "").lower().lstrip("www.")
+            domain = (item.get("domain") or "").lower().removeprefix("www.")
             if our_host in domain:
                 our_row = item
                 break

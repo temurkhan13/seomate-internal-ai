@@ -2009,7 +2009,7 @@ async def capture_p1_26(
         per_domain: dict[str, int] = {}
         authority_count = 0
         for ref in external:
-            host = (urlsplit(ref.target_url).netloc or "").lower().lstrip("www.")
+            host = (urlsplit(ref.target_url).netloc or "").lower().removeprefix("www.")
             per_domain[host] = per_domain.get(host, 0) + 1
             if any(a in ref.target_url.lower() for a in _AUTHORITY_HOSTS):
                 authority_count += 1
@@ -6111,7 +6111,7 @@ async def capture_p1_50(
         embed_videos = 0
         for iframe in soup.find_all("iframe"):
             src = (iframe.get("src") or "").strip().lower()
-            host = urlsplit(src).netloc.lower().lstrip("www.")
+            host = urlsplit(src).netloc.lower().removeprefix("www.")
             if any(h in host for h in _VIDEO_EMBED_HOSTS):
                 embed_videos += 1
 
@@ -8731,7 +8731,7 @@ def _detect_above_fold_ads(soup: BeautifulSoup, html: str) -> dict[str, Any]:
         src = (iframe.get("src") or "").strip().lower()
         if not src:
             continue
-        host = urlsplit(src).netloc.lower().lstrip("www.")
+        host = urlsplit(src).netloc.lower().removeprefix("www.")
         if any(net in host for net in _AD_NETWORK_HOSTS):
             matches.append(
                 {

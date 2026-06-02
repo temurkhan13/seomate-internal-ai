@@ -494,7 +494,7 @@ async def capture_p5_10(
     rule_3 = RuleResult(
         rule_id=3,
         rule_text="Rating distribution is non-degenerate (more than one star bucket has reviews)",
-        passed=sum(1 for v in distribution.values() if isinstance(v, int) and v > 0) >= 1,
+        passed=sum(1 for v in distribution.values() if isinstance(v, int) and v > 0) >= 2,
         evidence={"distribution": distribution},
         notes="Useful for detecting fake-review patterns (all-5-stars suspicious for many-review profiles).",
     )
@@ -1584,7 +1584,7 @@ async def capture_p5_06(
     for item in items:
         if item.get("type") != "organic":
             continue
-        domain = (item.get("domain") or "").lower().lstrip("www.")
+        domain = (item.get("domain") or "").lower().removeprefix("www.")
         url = (item.get("url") or "").lower()
         for frag in _DIRECTORY_CITATION_HOSTS:
             if frag in domain or frag in url:
@@ -1689,7 +1689,7 @@ async def capture_p5_08(
     for item in items:
         if item.get("type") != "organic":
             continue
-        domain = (item.get("domain") or "").lower().lstrip("www.")
+        domain = (item.get("domain") or "").lower().removeprefix("www.")
         url = (item.get("url") or "").lower()
         for frag in _NICHE_TECH_AGENCY_HOSTS:
             if frag in domain or frag in url:
@@ -1804,7 +1804,7 @@ _CITATION_TIER_LOW = (  # ~DR 50-70 or niche
 
 def _classify_citation_tier(platform_host: str) -> str:
     """Map a citation platform host to its authority tier (high/medium/low/unknown)."""
-    h = platform_host.lower().lstrip("www.")
+    h = platform_host.lower().removeprefix("www.")
     for frag in _CITATION_TIER_HIGH:
         if frag in h:
             return "high"
@@ -1870,7 +1870,7 @@ async def capture_p5_07(
     for item in items:
         if item.get("type") != "organic":
             continue
-        domain = (item.get("domain") or "").lower().lstrip("www.")
+        domain = (item.get("domain") or "").lower().removeprefix("www.")
         url = (item.get("url") or "").lower()
         matched_host = None
         for frag in combined_hosts:
@@ -2000,7 +2000,7 @@ async def capture_p5_01(
             errors=["no SERPs"],
         )
 
-    our_host = site.domain.lower().lstrip("www.")
+    our_host = site.domain.lower().removeprefix("www.")
     our_gbp_title = (gbp.get("title") if gbp else "") or ""
     our_place_id = (gbp.get("place_id") if gbp else "") or ""
 
@@ -2028,7 +2028,7 @@ async def capture_p5_01(
                     continue
                 e_title = (entry.get("title") or "").strip()
                 e_place = (entry.get("place_id") or "").strip()
-                e_domain = (entry.get("domain") or "").lower().lstrip("www.")
+                e_domain = (entry.get("domain") or "").lower().removeprefix("www.")
                 e_url = (entry.get("url") or "")
                 match = False
                 if our_place_id and e_place == our_place_id:

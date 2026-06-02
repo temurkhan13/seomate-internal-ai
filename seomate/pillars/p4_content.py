@@ -2011,7 +2011,7 @@ _AUTHORITY_HOST_FRAGMENTS = (
 
 
 def _is_authority_host(host: str) -> bool:
-    host_l = host.lower().lstrip("www.")
+    host_l = host.lower().removeprefix("www.")
     return any(frag in host_l for frag in _AUTHORITY_HOST_FRAGMENTS)
 
 
@@ -2049,7 +2049,7 @@ async def capture_p4_10(
 
     from bs4 import BeautifulSoup
 
-    site_host = site.domain.lower().lstrip("www.")
+    site_host = site.domain.lower().removeprefix("www.")
     findings: list[dict[str, Any]] = []
     for url, page in site.html_pages.items():
         if page.fetch_error is not None or not page.html or page.status_code >= 400:
@@ -2070,7 +2070,7 @@ async def capture_p4_10(
             href = (a.get("href") or "").strip()
             if not href or href.startswith("#") or href.startswith("mailto:"):
                 continue
-            host = urlsplit(href).netloc.lower().lstrip("www.")
+            host = urlsplit(href).netloc.lower().removeprefix("www.")
             if not host or site_host in host:
                 continue
             outbound_total += 1
@@ -2527,7 +2527,7 @@ async def capture_p4_08(
             errors=["no SERPs"],
         )
 
-    our_host = site.domain.lower().lstrip("www.")
+    our_host = site.domain.lower().removeprefix("www.")
     brand_name = (site.brand.name if site.brand else "").lower()
 
     # Build (keyword, our_url, competitor_urls[]) per non-brand SERP
@@ -2541,7 +2541,7 @@ async def capture_p4_08(
         competitor_urls: list[str] = []
         for it in organic:
             url = (it.get("url") or "").strip()
-            domain = (it.get("domain") or "").lower().lstrip("www.")
+            domain = (it.get("domain") or "").lower().removeprefix("www.")
             if not url:
                 continue
             if our_host in domain and our_url is None:

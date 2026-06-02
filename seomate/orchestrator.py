@@ -479,9 +479,9 @@ class AuditOrchestrator:
             if not items:
                 continue
             # Pick the first item whose domain matches the audited domain.
-            audited = self.config.audit.site.domain.lower().lstrip("www.")
+            audited = self.config.audit.site.domain.lower().removeprefix("www.")
             for item in items:
-                gbp_domain = (item.get("domain") or "").lower().lstrip("www.")
+                gbp_domain = (item.get("domain") or "").lower().removeprefix("www.")
                 if audited and audited in gbp_domain:
                     self._log.info(
                         "audit.gbp_discovered",
