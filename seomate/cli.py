@@ -210,22 +210,32 @@ def export_brief(
         "--taxonomy-path",
         help="Path to o1-taxonomy.md (default: repo docs/o1-taxonomy.md).",
     ),
+    llm_only: bool = typer.Option(
+        False,
+        "--llm-only",
+        help=(
+            "Scope the brief to ONLY the LLM-judgment variables (the hybrid "
+            "path): a Claude session evaluates just those against their rubrics "
+            "and merges the verdicts into a native audit via `ingest --merge-into`."
+        ),
+    ),
 ) -> None:
     """Export the taxonomy as an audit brief for a Claude session.
 
     The brief is the session's instruction set: per variable, its name,
-    description, data sources, and Step 1.5 rules, plus the raw taxonomy
-    markdown. A session reads this, performs the diagnostic itself, and
-    emits an ingest document (see docs/ingest-contract.md), which
-    `seomate ingest` writes back to the dashboard.
+    description, data sources, and Step 1.5 rules. With --llm-only it is scoped
+    to the LLM-judgment variables for the session-driven hybrid (native does the
+    deterministic vars; the session evaluates these for free). The session emits
+    an ingest document (see docs/ingest-contract.md); `seomate ingest` (with
+    --merge-into for the hybrid) writes it back to the dashboard.
     """
     import json
 
-    from seomate.brief import build_brief
+    from seomate.brief import LLM_JUDGMENT_VARIABLES, build_brief
     from seomate.taxonomy import Catalog
 
     catalog = Catalog.from_file(path)
-    brief = build_brief(catalog)
+    brief = build_brief(catalog, only=LLM_JUDGMENT_VARIABLES if llm_only else None)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(brief, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -305,27 +315,68 @@ def ingest(
         "--dry-run",
         help="Validate the document and report counts, but write nothing to the DB.",
     ),
+    merge_into: str | None = typer.Option(
+        None,
+        "--merge-into",
+        help=(
+            "HYBRID (canonical): merge these captures into an EXISTING native "
+            "audit by UUID, replacing the matching variables in place , e.g. "
+            "session-evaluated LLM-judgment vars from `export-brief --llm-only`. "
+            "Does not create a new audit; recomputes the audit's outcome counts."
+        ),
+    ),
 ) -> None:
     """Ingest a Claude-session audit JSON into the SEOMATE database.
 
-    NON-CANONICAL / TESTING PATH. The deterministic native auditor
-    (``seomate audit``) is the source of truth and runs weekly on the cron.
-    Manual session-judged ingests collect a thinner dataset and rely on the
-    session's own judgement, which is mislabel-prone (this path produced 26
-    mislabeled captures in June 2026, later purged). Use it only for
-    experiments / fixtures, NOT for the dashboard's authoritative numbers.
-    Ingested audits are tagged ``config_snapshot.source="claude-session-ingest"``
-    so they stay distinguishable from native runs.
+    Two modes:
+      * --merge-into <audit_id> (CANONICAL hybrid): merge session-evaluated
+        captures (the LLM-judgment variables) into an existing native audit,
+        replacing those variables in place. This is the sanctioned way to fill
+        the LLM vars for free with a Claude session instead of the paid API.
+      * default (NON-CANONICAL / testing): write a brand-new audit from a
+        full session-judged document. Mislabel-prone (it produced 26 mislabels
+        in June 2026, purged); for experiments/fixtures only. Native
+        ``seomate audit`` is the source of truth for a full run.
     """
     from seomate.ingest import (
         IngestError,
         ingest_audit,
         load_payload,
+        merge_captures_into_audit,
         parse_payload,
     )
 
     try:
         payload = load_payload(file)
+    except IngestError as exc:
+        typer.echo("Ingest load failed:", err=True)
+        for problem in exc.problems:
+            typer.echo(f"  - {problem}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    # ── Canonical hybrid: merge session-evaluated vars into a native audit ──
+    if merge_into:
+        n = len(payload.get("captures") or [])
+        typer.echo(f"Merge into audit: {merge_into}")
+        typer.echo(f"Captures to merge: {n}")
+        if dry_run:
+            typer.echo("Dry run: not written (validation runs on apply).")
+            return
+        try:
+            result = asyncio.run(merge_captures_into_audit(merge_into, payload))
+        except IngestError as exc:
+            typer.echo("Merge validation failed:", err=True)
+            for problem in exc.problems:
+                typer.echo(f"  - {problem}", err=True)
+            raise typer.Exit(code=1) from exc
+        typer.echo(
+            f"Merged {result['merged']} captures into {result['audit_id']} "
+            f"(audit now {result['total_captures']} captures)."
+        )
+        return
+
+    # ── Default: full new audit (non-canonical / testing) ──
+    try:
         audit_id, meta, captures = parse_payload(payload)
     except IngestError as exc:
         typer.echo("Ingest validation failed:", err=True)
@@ -341,9 +392,9 @@ def ingest(
         return
 
     typer.secho(
-        "WARNING: manual ingest is the NON-CANONICAL path. The native "
-        "`seomate audit` (weekly cron) is the source of truth; session-judged "
-        "ingests are mislabel-prone and for testing/fixtures only.",
+        "WARNING: full manual ingest is the NON-CANONICAL path. The native "
+        "`seomate audit` (weekly cron) is the source of truth; full session-judged "
+        "ingests are mislabel-prone. For the LLM vars, prefer --merge-into.",
         err=True,
         fg=typer.colors.YELLOW,
     )

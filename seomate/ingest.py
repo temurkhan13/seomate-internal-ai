@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import update
+from sqlalchemy import delete, select, update
 
 from seomate.data_contract import AuditStatus, CaptureRecord, CaptureStatus
 from seomate.storage import Audit, Capture, session_scope
@@ -281,6 +281,92 @@ async def ingest_audit(payload: dict[str, Any]) -> UUID:
         )
 
     return audit_id
+
+
+async def merge_captures_into_audit(audit_id: str | UUID, payload: dict[str, Any]) -> dict[str, Any]:
+    """Merge session-evaluated captures into an EXISTING (native) audit.
+
+    The hybrid path: a native run produces the deterministic captures and leaves
+    the LLM-judgment variables unmeasurable; a Claude session then evaluates
+    those (scoped to their rubrics) and this merges the verdicts in , replacing
+    the matching captures by variable_id and recomputing the audit's outcome
+    counts. Site domain + taxonomy_version are inherited from the target audit
+    (the session need not repeat them). Does NOT create a new audit.
+
+    Returns a small summary dict. Raises IngestError on a missing target audit
+    or any invalid capture (all problems collected).
+    """
+    aid = UUID(str(audit_id))
+    raw_caps = payload.get("captures")
+    if not isinstance(raw_caps, list) or not raw_caps:
+        raise IngestError(["captures is required and must be a non-empty array"])
+
+    async with session_scope() as s:
+        audit = await s.get(Audit, aid)
+        if audit is None:
+            raise IngestError([f"target audit {aid} not found , merge needs an existing native audit"])
+        taxonomy_version = audit.taxonomy_version
+        site_domain = audit.site_domain
+
+    problems: list[str] = []
+    records: list[CaptureRecord] = []
+    seen: set[str] = set()
+    for i, raw in enumerate(raw_caps):
+        if not isinstance(raw, dict):
+            problems.append(f"captures[{i}] must be an object")
+            continue
+        raw = {**raw, "audit_id": str(aid)}
+        raw.setdefault("taxonomy_version", taxonomy_version)
+        raw.setdefault("subject_id", site_domain)
+        raw.setdefault("captured_at", datetime.now(timezone.utc).isoformat())
+        try:
+            rec = CaptureRecord.model_validate(raw)
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"captures[{i}] (variable {raw.get('variable_id','?')}): {exc}")
+            continue
+        if rec.variable_id in seen:
+            problems.append(f"captures[{i}]: duplicate variable_id {rec.variable_id}")
+        seen.add(rec.variable_id)
+        records.append(rec)
+    if problems:
+        raise IngestError(problems)
+
+    # Replace each capture by (audit_id, variable_id): delete the existing row
+    # then insert the session verdict.
+    async with session_scope() as s:
+        for rec in records:
+            await s.execute(
+                delete(Capture).where(
+                    Capture.audit_id == aid, Capture.variable_id == rec.variable_id
+                )
+            )
+            s.add(_capture_orm_from_record(rec))
+
+    # Recompute outcome counts across ALL captures now on the audit.
+    async with session_scope() as s:
+        statuses = (
+            await s.execute(select(Capture.status).where(Capture.audit_id == aid))
+        ).scalars().all()
+        c: Counter[str] = Counter(statuses)
+        await s.execute(
+            update(Audit)
+            .where(Audit.audit_id == aid)
+            .values(
+                variables_attempted=len(statuses),
+                variables_passed=c.get("passed", 0),
+                variables_failed=c.get("failed", 0),
+                variables_partial=c.get("partial", 0),
+                variables_errored=c.get("error", 0),
+                variables_unmeasurable=c.get("unmeasurable", 0),
+            )
+        )
+
+    return {
+        "audit_id": str(aid),
+        "merged": len(records),
+        "total_captures": len(statuses),
+        "counts": dict(c),
+    }
 
 
 def load_payload(path: Path) -> dict[str, Any]:
