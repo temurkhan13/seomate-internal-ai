@@ -40,6 +40,11 @@ VARIABLE_HEADING_RE = re.compile(
     r"^## (?P<id>P[0-6]-\d{2}) [—-] (?P<title>.+?)\s*$",
 )
 REMOVED_TITLE_RE = re.compile(r"\*\(removed\s*[—-]\s*see\s+(?P<into>P[0-6]-\d{2})\)\*", re.IGNORECASE)
+# Broader marker: ANY "*(removed ...)*" suffix, including reason-only retirements
+# that carry no redirect target (e.g. "*(removed — May 2026 measurability audit)*").
+# REMOVED_TITLE_RE stays the authority for the redirect target; this one only
+# detects + strips the marker so reason-only retirements are flagged removed too.
+REMOVED_ANY_RE = re.compile(r"\*\(removed\b.*?\)\*", re.IGNORECASE)
 STEP_HEADING_RE = re.compile(r"^### Step (?P<n>\d(?:\.5)?) [—-] (?P<name>.+?)\s*$")
 PILLAR_FIELD_RE = re.compile(r"^\*\*Pillar:\*\*\s*(?P<value>.+?)\s*$")
 WEIGHT_FIELD_RE = re.compile(r"^\*\*Evidence weight:\*\*\s*(?P<value>.+?)\s*$")
@@ -203,10 +208,12 @@ def _parse_pillars(text: str) -> list[Pillar]:
                 pillar_id=current_pillar.pillar_id,
                 title=_clean_title(m_var.group("title")),
             )
-            removed_match = REMOVED_TITLE_RE.search(m_var.group("title"))
-            if removed_match:
+            if REMOVED_ANY_RE.search(m_var.group("title")):
                 current_section.removed = True
-                current_section.removed_into = removed_match.group("into")
+                into_match = REMOVED_TITLE_RE.search(m_var.group("title"))
+                current_section.removed_into = (
+                    into_match.group("into") if into_match else None
+                )
             continue
 
         # Step boundary inside a variable
@@ -231,8 +238,8 @@ def _parse_pillars(text: str) -> list[Pillar]:
 
 
 def _clean_title(raw_title: str) -> str:
-    """Strip the optional ``*(removed — see ...)*`` suffix from a title."""
-    return REMOVED_TITLE_RE.sub("", raw_title).strip()
+    """Strip any ``*(removed — ...)*`` suffix (redirect or reason-only) from a title."""
+    return REMOVED_ANY_RE.sub("", raw_title).strip()
 
 
 def _section_to_variable(section: _RawSection) -> Variable:
