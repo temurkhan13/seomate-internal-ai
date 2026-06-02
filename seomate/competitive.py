@@ -79,6 +79,79 @@ def _pos(v: Any) -> int:
     return int(v) if isinstance(v, (int, float)) and v else _BIG
 
 
+# Giant aggregators / platforms / directories that rank for everything , they
+# are never the target's real business competitors, so they're filtered out of
+# keyword-intelligence discovery.
+_AGGREGATOR_DENYLIST = {
+    "youtube.com", "reddit.com", "wikipedia.org", "linkedin.com", "medium.com",
+    "facebook.com", "twitter.com", "x.com", "instagram.com", "pinterest.com",
+    "quora.com", "github.com", "amazon.com", "google.com", "microsoft.com",
+    "apple.com", "yelp.com", "glassdoor.com", "indeed.com", "trustpilot.com",
+    "g2.com", "capterra.com", "clutch.co", "goodfirms.co", "designrush.com",
+    "upwork.com", "fiverr.com", "stackoverflow.com", "w3schools.com",
+    "geeksforgeeks.org", "tutorialspoint.com", "wikihow.com", "forbes.com",
+    "techcrunch.com", "gartner.com", "statista.com", "hubspot.com",
+    "wordpress.com", "wix.com", "shopify.com", "bbc.co.uk", "bbc.com",
+}
+
+
+def _is_denied(domain: str) -> bool:
+    return any(domain == x or domain.endswith(f".{x}") for x in _AGGREGATOR_DENYLIST)
+
+
+def _serp_domains(resp: dict) -> list[str]:
+    out: list[str] = []
+    try:
+        items = resp["tasks"][0]["result"][0]["items"] or []
+    except (KeyError, IndexError, TypeError):
+        return out
+    for it in items:
+        if it.get("type") != "organic":
+            continue
+        d = _norm(it.get("domain") or it.get("url"))
+        if d:
+            out.append(d)
+    return out
+
+
+async def _discover_competitors(
+    dfs: DataForSEOAdapter,
+    target: str,
+    *,
+    location_code: int,
+    language_code: str,
+    max_keywords: int = 10,
+    top_n: int = 5,
+) -> list[str]:
+    """Keyword-intelligence competitor discovery , the platform finding them itself.
+
+    Instead of keyword-overlap (which, for a low-traffic site, just returns giants
+    like youtube/reddit), this senses the site's own ranked keywords, runs the
+    SERP for the top ones, and collects the domains that keep showing up ,
+    minus aggregators. Those recurring real domains are the actual competitors.
+    """
+    from collections import Counter
+
+    rk = await dfs.ranked_keywords(
+        target, location_code=location_code, language_code=language_code, limit=50
+    )
+    kw_map = _ranked_map(rk)
+    keywords = sorted(kw_map, key=lambda k: kw_map[k]["volume"], reverse=True)[:max_keywords]
+    freq: Counter[str] = Counter()
+    for kw in keywords:
+        try:
+            serp = await dfs.serp_google_organic(
+                kw, location_code=location_code, language_code=language_code, depth=20
+            )
+        except Exception:  # noqa: BLE001 - one bad SERP shouldn't sink discovery
+            continue
+        for d in set(_serp_domains(serp)):
+            if d == target or _is_denied(d):
+                continue
+            freq[d] += 1
+    return [d for d, _ in freq.most_common(top_n)]
+
+
 async def run_competitive(
     target: str,
     competitors: list[str] | None = None,
@@ -100,17 +173,24 @@ async def run_competitive(
 
     async with DataForSEOAdapter(_ctx()) as dfs:
         if not provided:
-            disc = await dfs.competitors_domain(
-                target, location_code=location_code, language_code=language_code, limit=8
+            # Primary: keyword-intelligence discovery (who ranks for the site's
+            # own keywords, minus aggregators) , real competitors for niche sites.
+            provided = await _discover_competitors(
+                dfs, target, location_code=location_code, language_code=language_code
             )
-            try:
-                items = disc["tasks"][0]["result"][0]["items"] or []
-            except (KeyError, IndexError, TypeError):
-                items = []
-            provided = [
-                d for d in (_norm(i.get("domain")) for i in items)
-                if d and d != target
-            ][:5]
+            if not provided:
+                # Last-resort fallback: keyword-overlap (weak; giants dominate).
+                disc = await dfs.competitors_domain(
+                    target, location_code=location_code, language_code=language_code, limit=8
+                )
+                try:
+                    items = disc["tasks"][0]["result"][0]["items"] or []
+                except (KeyError, IndexError, TypeError):
+                    items = []
+                provided = [
+                    d for d in (_norm(i.get("domain")) for i in items)
+                    if d and d != target
+                ][:5]
             auto_discovered = True
 
         domains = [target, *provided]
