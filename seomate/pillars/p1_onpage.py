@@ -108,6 +108,31 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _grade_clean_rate(
+    clean: int,
+    total: int,
+    *,
+    pass_at: float = 0.9,
+    partial_at: float = 0.7,
+) -> CaptureStatus:
+    """Grade a distribution variable by the share of pages/URLs meeting best practice.
+
+    ``clean / total`` >= ``pass_at`` -> PASSED, >= ``partial_at`` -> PARTIAL,
+    else FAILED. Callers handle the no-data case before calling this, so a
+    PASSED from here means the site genuinely meets the bar, not merely that the
+    metric was captured. Evidence weight (Contested/Probable) still conveys how
+    much to trust the verdict; it no longer doubles as a reason to always pass.
+    """
+    if total <= 0:
+        return CaptureStatus.UNMEASURABLE
+    rate = clean / total
+    if rate >= pass_at:
+        return CaptureStatus.PASSED
+    if rate >= partial_at:
+        return CaptureStatus.PARTIAL
+    return CaptureStatus.FAILED
+
+
 # ─── P1-01 — Title presence and uniqueness ──────────────────────────────────
 
 
@@ -280,9 +305,7 @@ async def capture_p1_02(
         site=site,
         variable_id="P1-02",
         captured_at=captured_at,
-        # Contested → no pass/fail status assertion; record as 'passed'
-        # to mean "captured cleanly" and let downstream weigh as advisory.
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(n - len(too_short) - len(too_long), n),
         value={
             "indexable_pages_with_title": n,
             "in_optimal_range": len(in_optimal),
@@ -407,7 +430,7 @@ async def capture_p1_08(
         site=site,
         variable_id="P1-08",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(n - len(too_short) - len(too_long), n),
         value={
             "indexable_pages_with_description": n,
             "in_optimal_range": len(in_optimal),
@@ -509,9 +532,7 @@ async def capture_p1_12(
         site=site,
         variable_id="P1-12",
         captured_at=captured_at,
-        # Contested: report as captured cleanly; let downstream layer
-        # frame the recommendation honestly.
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(len(indexable) - len(multi), len(indexable)),
         value={
             "indexable_pages": len(indexable),
             "pages_with_multiple_h1": len(multi),
@@ -661,7 +682,7 @@ async def capture_p1_16(
         site=site,
         variable_id="P1-16",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(len(site.urls) - len(very_long_urls), len(site.urls)),
         value={
             "urls_audited": len(site.urls),
             "above_optimal_count": len(long_urls),
@@ -841,7 +862,7 @@ async def capture_p1_19(
         site=site,
         variable_id="P1-19",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(len(site.urls) - len(too_deep), len(site.urls)),
         value={
             "urls_audited": len(site.urls),
             "max_depth": max(depths) if depths else 0,
@@ -899,7 +920,9 @@ async def capture_p1_27(
         site=site,
         variable_id="P1-27",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        # Descriptive only: Google states outbound link COUNT is not a ranking
+        # factor and zero-outbound is not inherently bad. Recorded, not graded.
+        status=CaptureStatus.NOT_APPLICABLE,
         value={
             "indexable_pages": len(indexable),
             "average_external_links": round(sum(counts) / len(counts), 1)
@@ -1293,7 +1316,7 @@ async def capture_p1_34(
         site=site,
         variable_id="P1-34",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        status=_grade_clean_rate(len(indexable) - len(thin), len(indexable)),
         value={
             "indexable_pages": len(indexable),
             "average_word_count": round(sum(counts) / len(counts), 0)
@@ -1352,7 +1375,9 @@ async def capture_p1_51(
         site=site,
         variable_id="P1-51",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        # Descriptive only: appropriate reading level is audience-dependent
+        # (consumer blog vs technical docs); no universal pass/fail bar.
+        status=CaptureStatus.NOT_APPLICABLE,
         value={
             "indexable_pages": len(indexable),
             "site_averages": {
@@ -1893,7 +1918,9 @@ async def capture_p1_10(
         site=site,
         variable_id="P1-10",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED,
+        # Descriptive only: a leaked-feature approximation the taxonomy marks as
+        # non-operational. Snippet length recorded, not graded pass/fail.
+        status=CaptureStatus.NOT_APPLICABLE,
         value={
             "queries_with_ranking_snippet": len(findings),
             "queries_we_dont_rank_on_count": len(queries_without_us),
