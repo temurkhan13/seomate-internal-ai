@@ -57,6 +57,7 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
                 "status": c.status,
                 "evidence_weight": c.evidence_weight,
                 "value": c.value,
+                "rules": c.rules,
                 "errors": c.errors,
             }
             for c in rows
@@ -79,19 +80,36 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
     work_orders = []
     for f in findings:
         spec = get_spec(f["variable_id"])
-        # a short evidence string the executor can act on
-        evidence = ""
-        if f.get("errors"):
+        # The SPECIFIC rules that failed. A variable is multi-rule (e.g. P6-19 has
+        # Organization + page-type + BreadcrumbList + ...); it fails because some
+        # of its rules did. Surfacing exactly which ones stops the executor (and
+        # the artifact generators) acting on an already-passing rule , the
+        # remediation-spec mismatch where P6-19 got an Organization fix when its
+        # only failing rule was BreadcrumbList.
+        failing_rules = [
+            (r.get("rule_text") or "").strip()
+            for r in (f.get("rules") or [])
+            if isinstance(r, dict)
+            and r.get("passed") is False
+            and (r.get("rule_text") or "").strip()
+        ]
+        # Evidence: prefer the actual failing-rule texts; fall back to errors/value.
+        if failing_rules:
+            evidence = "; ".join(failing_rules[:3])
+        elif f.get("errors"):
             evidence = f["errors"][0]
         elif isinstance(f.get("value"), dict):
             rule = (f["value"] or {})
             evidence = "; ".join(f"{k}={v}" for k, v in list(rule.items())[:3] if not isinstance(v, (list, dict)))
+        else:
+            evidence = ""
         work_orders.append(
             {
                 "variable_id": f["variable_id"],
                 "pillar": f["pillar"],
                 "diagnostic_status": f["status"],
                 "evidence": evidence[:240],
+                "failing_rules": failing_rules,
                 "has_authored_spec": has_spec(f["variable_id"]),
                 "remediation": asdict(spec),
             }

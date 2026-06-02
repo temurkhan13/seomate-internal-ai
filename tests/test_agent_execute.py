@@ -14,6 +14,7 @@ from seomate.agent.execute import (
     _clean_label,
     _is_key_page,
     _valid_pages,
+    addresses_a_failing_rule,
     build_apply_manifest,
     can_generate,
     execute_work_order,
@@ -143,3 +144,43 @@ def test_build_apply_manifest_is_propose_only(tmp_path: Path):
     assert manifest["artifacts_generated"] == 1   # P6-18 generated
     assert manifest["manual_work_orders"] == 1     # P4-11 routed manual
     assert "NOT written to the target site" in manifest["note"]
+
+
+def test_addresses_a_failing_rule_gates_by_keyword():
+    # P6-19's generator makes Organization schema; it must NOT fire when the only
+    # failing rule is BreadcrumbList (the real-data remediation-spec mismatch).
+    assert addresses_a_failing_rule("P6-19", ["BreadcrumbList present on every non-homepage URL"]) is False
+    assert addresses_a_failing_rule("P6-19", ["Organization (or Person) schema present on every page"]) is True
+    # P1-42's Article generator must not fire on a date-only failure.
+    assert addresses_a_failing_rule("P1-42", ["Site provides syntactic date on at least 50% of pages"]) is False
+    # Back-compat: no keyword map, or no per-rule detail -> never blocks.
+    assert addresses_a_failing_rule("P9-99", ["anything"]) is True
+    assert addresses_a_failing_rule("P6-19", []) is True
+
+
+def test_build_apply_manifest_skips_artifact_that_misses_failing_rule(tmp_path: Path):
+    # The core platform fix: a generator keyed by variable_id must not emit an
+    # artifact for a rule that already passes.
+    plan = {
+        "site_domain": "abcd.com",
+        "audit_id": "x",
+        "work_orders": [
+            # P6-19 fails ONLY on BreadcrumbList -> Organization artifact suppressed
+            {"variable_id": "P6-19",
+             "failing_rules": ["BreadcrumbList present on every non-homepage URL"],
+             "remediation": {"automatable": True, "fix_class": "session", "concrete_change": "...", "required_inputs": [], "verify": "re-audit P6-19"}},
+            # P2-28 fails on orphan/inbound -> orphan-link plan DOES address it
+            {"variable_id": "P2-28",
+             "failing_rules": ["No page in the audited URL set has zero inbound internal links"],
+             "remediation": {"automatable": True, "fix_class": "session", "concrete_change": "...", "required_inputs": [], "verify": "re-audit P2-28"}},
+        ],
+    }
+    manifest = build_apply_manifest(plan, _cache(tmp_path))
+    gen_ids = {a["variable_id"] for a in manifest["generated"]}
+    man_ids = {a["variable_id"] for a in manifest["manual"]}
+    assert "P2-28" in gen_ids                 # matches a failing rule -> generated
+    assert "P6-19" not in gen_ids             # mismatch -> NOT generated
+    assert "P6-19" in man_ids                 # routed to manual instead
+    p619 = next(a for a in manifest["manual"] if a["variable_id"] == "P6-19")
+    assert "BreadcrumbList" in p619["failing_rules"][0]
+    assert "does not address" in p619.get("reason", "")

@@ -275,6 +275,38 @@ _GENERATORS = {
     "P1-24": _gen_orphan_links,
 }
 
+# What each generator's artifact ACTUALLY addresses, as keywords matched against
+# a work order's failing_rules. A generator is keyed by variable_id but a
+# variable is multi-rule, so the generator must only fire when its artifact fixes
+# a rule that actually failed , otherwise we ship e.g. Organization schema for a
+# P6-19 whose Organization rule already passes and only BreadcrumbList failed.
+# Keep keywords TIGHT to what the generator produces (presence of a schema /
+# file / link), never the variable's broad theme.
+_GENERATOR_ADDRESSES: dict[str, tuple[str, ...]] = {
+    "P6-18": ("llms",),
+    "P2-42": ("sitemap", "priority"),
+    "P6-19": ("organization",),
+    "P1-42": ("article", "person", "byline"),
+    "P1-21": ("at least one schema", "schema type present", "no schema"),
+    "P2-28": ("orphan", "inbound"),
+    "P1-24": ("orphan", "inbound", "authority"),
+}
+
+
+def addresses_a_failing_rule(variable_id: str, failing_rules: list[str]) -> bool:
+    """True if this variable's generator addresses at least one failing rule.
+
+    The guard against the remediation-spec mismatch: never emit an artifact for a
+    rule that already passes. Conservative , when there's no keyword map or no
+    rule detail (older audits without per-rule data), it returns True so existing
+    behaviour is preserved; it only ever SUPPRESSES a clearly-mismatched artifact.
+    """
+    kws = _GENERATOR_ADDRESSES.get(variable_id)
+    if not kws or not failing_rules:
+        return True
+    hay = " ".join(failing_rules).lower()
+    return any(k in hay for k in kws)
+
 
 def can_generate(variable_id: str) -> bool:
     return variable_id in _GENERATORS
@@ -319,12 +351,28 @@ def build_apply_manifest(plan: dict[str, Any], cache_dir: str | Path) -> dict[st
     generated, manual = [], []
     for w in plan["work_orders"]:
         vid = w["variable_id"]
+        failing_rules = w.get("failing_rules") or []
         if w["remediation"]["automatable"] and can_generate(vid):
+            if not addresses_a_failing_rule(vid, failing_rules):
+                # The generator's artifact wouldn't fix what actually failed (e.g.
+                # P6-19's Organization artifact when only BreadcrumbList failed).
+                # Route to manual with the real failing rules instead of shipping a
+                # misleading/redundant artifact.
+                manual.append({
+                    "variable_id": vid, "generated": False,
+                    "reason": "auto-generator does not address a failing rule (its artifact would fix an already-passing rule); needs a targeted/manual fix",
+                    "failing_rules": failing_rules,
+                    "fix_class": w["remediation"]["fix_class"],
+                    "verify": w["remediation"]["verify"],
+                })
+                continue
             res = execute_work_order(vid, cache_dir, domain)
+            res.setdefault("failing_rules", failing_rules)
             (generated if res.get("generated") else manual).append(res)
         else:
             manual.append({
                 "variable_id": vid, "generated": False,
+                "failing_rules": failing_rules,
                 "fix_class": w["remediation"]["fix_class"],
                 "concrete_change": w["remediation"]["concrete_change"],
                 "required_inputs": w["remediation"]["required_inputs"],
