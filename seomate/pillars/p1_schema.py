@@ -141,6 +141,10 @@ KNOWN_SCHEMA_TYPES = frozenset(
         "OpeningHoursSpecification", "Service", "MonetaryAmount",
         "PropertyValue", "Place", "SearchAction", "EntryPoint", "Question",
         "Answer", "ImageGallery", "Audience", "Action", "WebContent",
+        # Common valid schema.org types that were missing -> were wrongly flagged
+        # as "unrecognised/invented" (e.g. ItemList on a team/about page).
+        "ItemList", "WebSite", "WebPage", "SiteNavigationElement", "Person",
+        "VideoObject", "NewsArticle", "BlogPosting", "Rating",
     ]
 )
 
