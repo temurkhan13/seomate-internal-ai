@@ -308,10 +308,14 @@ def ingest(
 ) -> None:
     """Ingest a Claude-session audit JSON into the SEOMATE database.
 
-    The session performs the 226-variable diagnostic itself (using the
-    taxonomy as its understanding) and emits one JSON document. This writes
-    it as a normal audit so it shows on the dashboard. Reuses the same
-    schema and capture contract as a natively-run audit.
+    NON-CANONICAL / TESTING PATH. The deterministic native auditor
+    (``seomate audit``) is the source of truth and runs weekly on the cron.
+    Manual session-judged ingests collect a thinner dataset and rely on the
+    session's own judgement, which is mislabel-prone (this path produced 26
+    mislabeled captures in June 2026, later purged). Use it only for
+    experiments / fixtures, NOT for the dashboard's authoritative numbers.
+    Ingested audits are tagged ``config_snapshot.source="claude-session-ingest"``
+    so they stay distinguishable from native runs.
     """
     from seomate.ingest import (
         IngestError,
@@ -336,6 +340,13 @@ def ingest(
         typer.echo("Dry run: document is valid; nothing written.")
         return
 
+    typer.secho(
+        "WARNING: manual ingest is the NON-CANONICAL path. The native "
+        "`seomate audit` (weekly cron) is the source of truth; session-judged "
+        "ingests are mislabel-prone and for testing/fixtures only.",
+        err=True,
+        fg=typer.colors.YELLOW,
+    )
     written_id = asyncio.run(ingest_audit(payload))
     typer.echo(f"Ingest complete: {written_id}")
 

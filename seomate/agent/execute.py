@@ -265,6 +265,19 @@ def _gen_orphan_links(cache: _Cache, domain: str) -> FixArtifact | None:
     )
 
 
+# Execution-side scope (a deliberate ceiling, not a missing feature). apply-fixes
+# is PROPOSE-mode. The generators below produce either complete root files
+# (llms.txt, sitemap) or review-ready snippets/plans (schema blocks, link plans).
+# Most remaining SEO fixes are NOT cleanly auto-generatable, and adding generators
+# for them would be wrong rather than merely marginal:
+#   - per-page template/content edits (titles, headings, breadcrumbs, dates),
+#     image pipelines (WebP) and owner/budget actions can't be a dropped file;
+#   - several failing rules are "schema must MATCH visible content" (e.g. P6-09):
+#     generating MORE schema does not fix a visible-match failure, and the
+#     rule-accuracy gate (_GENERATOR_ADDRESSES) would wrongly let it through.
+# For all of those the mechanism is plan-fixes' rule-accurate work orders (the
+# diagnostic -> execution handoff), executed by a repo-access session or a human.
+# Depth here comes from ACCURATE work orders, not from auto-writing templates.
 _GENERATORS = {
     "P6-18": _gen_llms_txt,
     "P2-42": _gen_sitemap_priority,
