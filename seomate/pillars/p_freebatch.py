@@ -380,9 +380,14 @@ async def capture_p4_20(
             variable_id="P4-20",
             pillar="P4",
             captured_at=captured_at,
-            status=CaptureStatus.UNMEASURABLE,
+            status=CaptureStatus.NOT_APPLICABLE,
             value={
-                "reason": "no affiliate links or disclosures detected; variable does not apply",
+                "reason": (
+                    "no affiliate links or disclosures detected anywhere on the "
+                    "site; affiliate-disclosure quality does not apply. (Would "
+                    "grade on a site that uses affiliate links.)"
+                ),
+                "applicability": "not_applicable",
                 "sponsored_link_count": 0,
                 "disclosure_page_count": 0,
             },
@@ -1468,15 +1473,60 @@ async def capture_p4_04(
         )
 
     if not bio_pages:
+        # No author-bio page found. We do NOT widen the URL patterns to /about-us
+        # etc. — a company "about" page is not a per-author bio, and grading it as
+        # one would misclassify. Instead: a site that PUBLISHES articles but has no
+        # credentialed author bios has a real E-E-A-T authorship gap (FAILED). A
+        # site with no article content has nothing to attribute, so N/A.
+        content_segments = ("/blog", "/article", "/news", "/insights", "/resources/", "/guide")
+        content_pages = [
+            u for u in site.text_content
+            if any(seg in (urlsplit(u).path or "").lower() for seg in content_segments)
+        ]
+        if content_pages:
+            rule_1 = RuleResult(
+                rule_id=1,
+                rule_text="A site that publishes articles/blog content exposes author-bio pages",
+                passed=False,
+                evidence={
+                    "content_pages_detected": len(content_pages),
+                    "content_pages_sample": content_pages[:5],
+                    "bio_url_patterns_checked": list(bio_url_patterns),
+                },
+                notes="Publishes content but no detectable author-bio pages — an E-E-A-T authorship gap.",
+            )
+            return _build_record(
+                ctx=ctx,
+                site=site,
+                variable_id="P4-04",
+                pillar="P4",
+                captured_at=captured_at,
+                status=CaptureStatus.FAILED,
+                value={
+                    "reason": (
+                        "site publishes article/blog content but exposes no "
+                        "author-bio pages (E-E-A-T authorship gap)"
+                    ),
+                    "content_pages_detected": len(content_pages),
+                    "url_patterns_checked": list(bio_url_patterns),
+                },
+                rules=[rule_1],
+                evidence_weight=EvidenceWeight.CONSENSUS,
+                data_sources=["http.html_fetch", "trafilatura.main_text"],
+            )
         return _build_record(
             ctx=ctx,
             site=site,
             variable_id="P4-04",
             pillar="P4",
             captured_at=captured_at,
-            status=CaptureStatus.UNMEASURABLE,
+            status=CaptureStatus.NOT_APPLICABLE,
             value={
-                "reason": "no author bio pages detected via URL patterns",
+                "reason": (
+                    "no author-bio pages and no article/blog content to attribute; "
+                    "authorship E-E-A-T does not apply to this site"
+                ),
+                "applicability": "not_applicable",
                 "url_patterns_checked": list(bio_url_patterns),
             },
             rules=None,
@@ -2648,10 +2698,14 @@ async def capture_p2_33(
             variable_id="P2-33",
             pillar="P2",
             captured_at=captured_at,
-            status=CaptureStatus.UNMEASURABLE,
+            status=CaptureStatus.NOT_APPLICABLE,
             value={
-                "reason": "no hreflang tags found; site appears to be single-locale",
-                "configured_locales": site.domain,
+                "reason": (
+                    "no hreflang tags found on any page; the site is single-locale, "
+                    "so hreflang correctness does not apply. (Would grade on a "
+                    "multi-language site.)"
+                ),
+                "applicability": "not_applicable",
             },
             rules=None,
             evidence_weight=EvidenceWeight.CONSENSUS,
