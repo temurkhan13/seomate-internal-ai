@@ -1689,7 +1689,7 @@ async def capture_p1_37(
     evals = site.llm_evaluations.get("topic_depth", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no long-form pages (>=400 words on /blog/, /article/, /guide/ paths) for topic_depth eval"
         )

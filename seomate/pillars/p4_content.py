@@ -561,7 +561,7 @@ async def capture_p4_23(
     evals = site.llm_evaluations.get("headline_accuracy", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set" if not site.llm_configured
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval" if not site.llm_configured
             else "no article-like pages identified for headline evaluation"
         )
         return _build_record(
@@ -684,7 +684,7 @@ async def capture_p4_07(
     evals = site.llm_evaluations.get("content_substance", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive (>= 200 words) pages found to evaluate"
         )
@@ -813,7 +813,7 @@ async def capture_p4_21(
     evals = site.llm_evaluations.get("content_substance", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages found to evaluate"
         )
@@ -932,7 +932,7 @@ async def capture_p4_09(
     evals = site.llm_evaluations.get("insightfulness", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no article-like pages with substantive content"
         )
@@ -1232,7 +1232,7 @@ async def capture_p4_22(
 
     if not content_sub:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages evaluated by content_substance"
         )
@@ -1357,7 +1357,7 @@ async def capture_p4_17(
     ymyl_evals = site.llm_evaluations.get("ymyl", {})
     if not ymyl_evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no YMYL classification available"
         )
@@ -2200,7 +2200,7 @@ async def capture_p4_11(
     evals = site.llm_evaluations.get("original_research", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no eligible pages (LLM evaluator restricts to blog / article / research paths with >=300 words)"
         )

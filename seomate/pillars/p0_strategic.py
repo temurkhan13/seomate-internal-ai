@@ -310,7 +310,7 @@ async def capture_p0_17(
     evals = site.llm_evaluations.get("ymyl", {})
     if not evals:
         reason = (
-            "ANTHROPIC_API_KEY not set"
+            "LLM eval pending: evaluate via a Claude session (export-brief + ingest), or set ANTHROPIC_API_KEY for headless eval"
             if not site.llm_configured
             else "no substantive pages (>= 100 words) for classification"
         )
