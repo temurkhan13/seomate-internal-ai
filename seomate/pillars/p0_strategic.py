@@ -930,7 +930,9 @@ _BUYER_AWARENESS_PATTERNS = (
 # ─── P0-14 — Content gap analysis vs ranking competitors ────────────────────
 
 
-@register_extractor("P0-14")
+# P0-14 moved to the Competitive Analysis module (June 2026) — it is a
+# comparative insight, not an audit variable, so it is no longer registered as a
+# site-audit extractor. Logic retained here for reference / reuse by the module.
 async def capture_p0_14(
     ctx: AdapterContext,
     site: SiteData,

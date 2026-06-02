@@ -59,8 +59,10 @@ def test_registry_matches_active_catalog():
     # are flagged removed (PR #12), so they are not in `active`.
     assert not (reg - active), f"orphan extractors (non-active vars): {sorted(reg - active)}"
     assert not (active - reg), f"active vars missing an extractor: {sorted(active - reg)}"
-    assert len(active) == 226
-    assert len(reg) == 226
+    # 224 = 226 - P0-14 - P4-08 (the two comparative vars moved to the
+    # Competitive Analysis module in June 2026; they are removed from the audit).
+    assert len(active) == 224
+    assert len(reg) == 224
     removed = {v.variable_id for v in cat.removed_variables()}
     assert RETIRED_NO_EXTRACTOR <= removed, (
         f"retired vars not flagged removed: {sorted(RETIRED_NO_EXTRACTOR - removed)}"
