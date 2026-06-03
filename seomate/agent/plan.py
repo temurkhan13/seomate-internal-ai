@@ -148,3 +148,105 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
         "needs_remediation_authoring": needs_authoring,
         "work_orders": work_orders,
     }
+
+
+# ── strategy view ─────────────────────────────────────────────────────────────
+# Where the site stands (pillar health) + the fix work sequenced into waves. This
+# is the Strategist surface, parallel to the audit (findings) + plan (fixes)
+# pages. It is DETERMINISTIC , derived from the stored audit + the remediation
+# plan. The objective-driven narrative (re-sequencing for a specific goal, the
+# "binding constraint is X" call) stays a session's job, saved to the vault.
+
+_PILLAR_LABEL = {
+    "P0": "Strategy & keywords",
+    "P1": "On-page",
+    "P2": "Technical",
+    "P3": "Off-page authority",
+    "P4": "Content & E-E-A-T",
+    "P5": "Local",
+    "P6": "AI search / GEO",
+}
+
+_WAVE_META = [
+    ("quick_wins", "Quick wins (now)",
+     "Session-automatable fixes a Claude session can ship straight away."),
+    ("session_content", "Content & on-page (session-drafted)",
+     "A session drafts these; you review and approve the PR."),
+    ("needs_people", "Needs people or owners",
+     "Real facts, editorial, or owner-only access (e.g. Google Business Profile)."),
+    ("authority", "Authority & spend (ongoing)",
+     "Off-site work and paid items: PR, backlinks, entity-building."),
+]
+
+
+def _wave_key(fix_class: str, automatable: bool) -> str:
+    if fix_class == "session":
+        return "quick_wins" if automatable else "session_content"
+    if fix_class in ("human", "owner"):
+        return "needs_people"
+    return "authority"  # offsite, budget
+
+
+async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
+    """Strategy view for an audit: pillar health + the fix work in sequenced waves.
+
+    Deterministic and free (no new paid calls): reuses ``plan_fixes`` for the work
+    orders and reads the stored captures for pillar health. Keyword targeting
+    (ranked keywords + opportunities) is a paid, competitor-dependent surface and
+    lives on the competitive page; this view links to it rather than duplicating it.
+
+    Raises ValueError if the audit isn't found (via ``plan_fixes``).
+    """
+    aid = UUID(str(audit_id))
+    plan = await plan_fixes(aid)
+
+    async with session_scope() as s:
+        rows = (
+            await s.execute(
+                select(Capture.pillar, Capture.status).where(Capture.audit_id == aid)
+            )
+        ).all()
+
+    health: dict[str, dict[str, int]] = {}
+    for pillar, status in rows:
+        d = health.setdefault(pillar, {})
+        d[status] = d.get(status, 0) + 1
+
+    positioning = []
+    for p in sorted(_PILLAR_LABEL):
+        d = health.get(p, {})
+        passed, failed, partial = d.get("passed", 0), d.get("failed", 0), d.get("partial", 0)
+        graded = passed + failed + partial
+        positioning.append({
+            "pillar": p,
+            "label": _PILLAR_LABEL[p],
+            "passed": passed,
+            "failed": failed,
+            "partial": partial,
+            "health_pct": round(100 * passed / graded) if graded else None,
+        })
+
+    buckets: dict[str, list[dict[str, Any]]] = {k: [] for k, _, _ in _WAVE_META}
+    for w in plan["work_orders"]:
+        r = w["remediation"]
+        buckets[_wave_key(r["fix_class"], r["automatable"])].append({
+            "variable_id": w["variable_id"],
+            "pillar": w["pillar"],
+            "fix_class": r["fix_class"],
+            "concrete_change": r["concrete_change"],
+        })
+    waves = [
+        {"key": k, "title": t, "blurb": b, "count": len(buckets[k]), "items": buckets[k]}
+        for k, t, b in _WAVE_META
+    ]
+
+    return {
+        "audit_id": str(aid),
+        "site_domain": plan["site_domain"],
+        "audit_started_at": plan["audit_started_at"],
+        "is_latest_audit": plan["is_latest_audit"],
+        "actionable_findings": plan["actionable_findings"],
+        "by_fix_class": plan["by_fix_class"],
+        "positioning": positioning,
+        "waves": waves,
+    }

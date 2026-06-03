@@ -19,12 +19,12 @@ package is the "data plumbing" so that judgment is all the session must supply.
 """
 from seomate.agent.execute import build_apply_manifest, execute_work_order
 from seomate.agent.gather import GatherResult, gather
-from seomate.agent.plan import plan_fixes
+from seomate.agent.plan import build_strategy, plan_fixes
 from seomate.agent.remediation import RemediationSpec, get_spec
 from seomate.agent.target import GitHubPRTarget, TargetResult
 
 __all__ = [
-    "gather", "GatherResult", "plan_fixes", "get_spec", "RemediationSpec",
-    "build_apply_manifest", "execute_work_order",
+    "gather", "GatherResult", "plan_fixes", "build_strategy", "get_spec",
+    "RemediationSpec", "build_apply_manifest", "execute_work_order",
     "GitHubPRTarget", "TargetResult",
 ]
