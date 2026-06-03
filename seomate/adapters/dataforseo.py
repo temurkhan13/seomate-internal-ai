@@ -681,3 +681,70 @@ class DataForSEOAdapter(BaseAdapter):
         )
         response.raise_for_status()
         return response.json()
+
+    @rate_limited
+    @retry_transient()
+    @tracked("dataforseo_labs.keyword_ideas", cost_calculator=_cost_from_dfs_response)
+    async def keyword_ideas(
+        self,
+        seed_keywords: list[str],
+        *,
+        location_code: int = 2826,  # United Kingdom
+        language_code: str = "en",
+        limit: int = 300,
+    ) -> dict:
+        """Keyword ideas relevant to the seed keywords , the niche's broader keyword
+        universe. ~$0.02/call.
+
+        Seeds are the site's own ranked keywords; the response is the wider set of
+        related keywords, each with search volume + competition (keyword_info) and
+        keyword difficulty (keyword_properties). This is the idea-generation step
+        that competitor-gap analysis alone does not give you.
+
+        location_code defaults to UK (2826); for US use 2840.
+        """
+        body = [
+            {
+                "keywords": [k for k in seed_keywords if k][:200],
+                "location_code": location_code,
+                "language_code": language_code,
+                "limit": limit,
+                "order_by": ["keyword_info.search_volume,desc"],
+            }
+        ]
+        response = await self.client.post(
+            "/v3/dataforseo_labs/google/keyword_ideas/live", json=body
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @rate_limited
+    @retry_transient()
+    @tracked("dataforseo_labs.bulk_keyword_difficulty", cost_calculator=_cost_from_dfs_response)
+    async def bulk_keyword_difficulty(
+        self,
+        keywords: list[str],
+        *,
+        location_code: int = 2826,  # United Kingdom
+        language_code: str = "en",
+    ) -> dict:
+        """Keyword difficulty (0-100) for up to 1000 keywords in one call. ~$0.01.
+
+        Difficulty estimates how hard it is to reach Google page 1 for the keyword
+        (higher = harder). Paired with search volume, it separates winnable targets
+        from the ones a low-authority site cannot realistically rank for yet.
+
+        location_code defaults to UK (2826); for US use 2840.
+        """
+        body = [
+            {
+                "keywords": [k for k in keywords if k][:1000],
+                "location_code": location_code,
+                "language_code": language_code,
+            }
+        ]
+        response = await self.client.post(
+            "/v3/dataforseo_labs/google/bulk_keyword_difficulty/live", json=body
+        )
+        response.raise_for_status()
+        return response.json()

@@ -114,6 +114,43 @@ def _serp_domains(resp: dict) -> list[str]:
     return out
 
 
+def _ideas_candidates(resp: dict) -> list[dict[str, Any]]:
+    """keyword + volume + difficulty from a keyword_ideas response."""
+    out: list[dict[str, Any]] = []
+    try:
+        items = resp["tasks"][0]["result"][0]["items"] or []
+    except (KeyError, IndexError, TypeError):
+        return out
+    for it in items:
+        kw = it.get("keyword")
+        if not kw:
+            continue
+        ki = it.get("keyword_info") or {}
+        kp = it.get("keyword_properties") or {}
+        diff = kp.get("keyword_difficulty")
+        out.append({
+            "keyword": kw,
+            "volume": int(ki.get("search_volume") or 0),
+            "difficulty": int(diff) if isinstance(diff, (int, float)) else None,
+        })
+    return out
+
+
+def _difficulty_map(resp: dict) -> dict[str, int]:
+    """keyword -> difficulty from a bulk_keyword_difficulty response."""
+    out: dict[str, int] = {}
+    try:
+        items = resp["tasks"][0]["result"][0]["items"] or []
+    except (KeyError, IndexError, TypeError):
+        return out
+    for it in items:
+        kw = it.get("keyword")
+        d = it.get("keyword_difficulty")
+        if kw and isinstance(d, (int, float)):
+            out[kw] = int(d)
+    return out
+
+
 async def _discover_competitors(
     dfs: DataForSEOAdapter,
     target: str,
@@ -150,6 +187,93 @@ async def _discover_competitors(
                 continue
             freq[d] += 1
     return [d for d, _ in freq.most_common(top_n)]
+
+
+async def _keyword_opportunities(
+    dfs: DataForSEOAdapter,
+    target: str,
+    our_ranked: dict[str, dict[str, Any]],
+    *,
+    location_code: int,
+    language_code: str,
+    seed_keywords: list[str] | None = None,
+    max_seeds: int = 15,
+    idea_limit: int = 300,
+    shortlist: int = 60,
+    top_n: int = 25,
+    max_difficulty: int = 70,
+) -> list[dict[str, Any]]:
+    """The "which keywords should we go for" the Strategist needs.
+
+    Seeds keyword-idea generation from the site's own top ranked keywords (which
+    define its niche), drops the keywords it already wins + the ones too hard to
+    rank for, then scores each candidate by search volume weighted by winnability
+    (lower difficulty scores higher). Returns the top opportunities, biggest first.
+
+    This surfaces volume + difficulty; the *relevance* call (is this keyword on
+    our business?) stays the Strategist session's semantic judgment, not a keyword
+    denylist here. Bounded cost: one keyword_ideas call + at most one
+    bulk_keyword_difficulty call to backfill missing difficulty scores.
+    """
+    if not our_ranked and not seed_keywords:
+        return []
+    # On-niche seeds: prefer the caller-supplied set (competitor-gap keywords are
+    # inherently in the business niche) over the site's own rankings, which can be
+    # skewed to off-topic terms it happens to rank for. Fall back to the site's own
+    # multi-word keywords when there are no competitors to learn the niche from.
+    if seed_keywords:
+        seeds = [k for k in seed_keywords if k][:max_seeds]
+    else:
+        by_vol = sorted(our_ranked, key=lambda k: our_ranked[k]["volume"], reverse=True)
+        multi = [k for k in by_vol if len(k.split()) >= 2]
+        seeds = (multi or by_vol)[:max_seeds]
+    if not seeds:
+        return []
+    ideas = await dfs.keyword_ideas(
+        seeds, location_code=location_code, language_code=language_code, limit=idea_limit
+    )
+    # Drop keywords we already rank top-10 for (not opportunities) + zero-volume.
+    already = {k for k, v in our_ranked.items() if _pos(v.get("position")) <= 10}
+    seen: dict[str, dict[str, Any]] = {}
+    for c in _ideas_candidates(ideas):
+        if c["volume"] <= 0 or c["keyword"] in already:
+            continue
+        prev = seen.get(c["keyword"])
+        if prev is None or c["volume"] > prev["volume"]:
+            seen[c["keyword"]] = c
+    cands = sorted(seen.values(), key=lambda c: c["volume"], reverse=True)[:shortlist]
+    if not cands:
+        return []
+    # Backfill missing difficulty in one bulk call.
+    missing = [c["keyword"] for c in cands if c["difficulty"] is None]
+    if missing:
+        try:
+            dmap = _difficulty_map(
+                await dfs.bulk_keyword_difficulty(
+                    missing, location_code=location_code, language_code=language_code
+                )
+            )
+            for c in cands:
+                if c["difficulty"] is None:
+                    c["difficulty"] = dmap.get(c["keyword"])
+        except Exception:  # noqa: BLE001 - difficulty is a nice-to-have, not required
+            pass
+
+    # Winnability cap: drop targets too hard for a low-authority site to reach.
+    cands = [c for c in cands if c["difficulty"] is None or c["difficulty"] <= max_difficulty]
+    if not cands:
+        return []
+
+    def _score(c: dict[str, Any]) -> int:
+        d = c["difficulty"]
+        if d is None:
+            return round(c["volume"] * 0.5)  # unknown difficulty: neutral penalty
+        return round(c["volume"] * (1 - min(max(d, 0), 100) / 100))
+
+    for c in cands:
+        c["opportunity_score"] = _score(c)
+    cands.sort(key=lambda c: c["opportunity_score"], reverse=True)
+    return cands[:top_n]
 
 
 async def run_competitive(
@@ -221,6 +345,27 @@ async def run_competitive(
             )
             ranked[d] = _ranked_map(rk)
 
+        # Keyword opportunities: seed idea-generation from the competitor-gap
+        # keywords (on-niche, since competitors are real businesses in the space),
+        # falling back to the target's own rankings when there are no competitors.
+        # The "what should we go for" the Strategist needs. Additive, so a failure
+        # here must never sink the rest of the report.
+        our_inside = set(ranked.get(target, {}))
+        gap_vol: dict[str, int] = {}
+        for comp in provided:
+            for k, v in ranked.get(comp, {}).items():
+                if k not in our_inside and (v.get("volume") or 0) > 0:
+                    gap_vol[k] = max(gap_vol.get(k, 0), v["volume"])
+        gap_seeds = [k for k, _ in sorted(gap_vol.items(), key=lambda x: x[1], reverse=True)[:15]]
+        try:
+            opportunities = await _keyword_opportunities(
+                dfs, target, ranked.get(target, {}),
+                seed_keywords=gap_seeds or None,
+                location_code=location_code, language_code=language_code,
+            )
+        except Exception:  # noqa: BLE001
+            opportunities = []
+
     our = ranked.get(target, {})
     our_kw = set(our)
     per_competitor: list[dict[str, Any]] = []
@@ -276,4 +421,5 @@ async def run_competitive(
         "language_code": language_code,
         "visibility": visibility,
         "per_competitor": per_competitor,
+        "opportunities": opportunities,
     }
