@@ -410,7 +410,7 @@ async def capture_p0_17(
 from seomate.utils.intent import classify_intent as _classify_intent
 
 
-@register_extractor("P0-01")
+# unregistered (P0-01 moved to Strategy / Competitive, June 2026):
 async def capture_p0_01(
     ctx: AdapterContext,
     site: SiteData,
@@ -1013,7 +1013,7 @@ def _classify_buyer_stage(keyword: str, intent: str) -> dict:
     return {"stage": "awareness", "confidence": 0.4, "method": "informational_default"}
 
 
-@register_extractor("P0-06")
+# unregistered (P0-06 moved to Strategy / Competitive, June 2026):
 async def capture_p0_06(
     ctx: AdapterContext,
     site: SiteData,
@@ -1151,7 +1151,7 @@ _SERP_FEATURE_TYPES = {
 }
 
 
-@register_extractor("P0-05")
+# unregistered (P0-05 moved to Strategy / Competitive, June 2026):
 async def capture_p0_05(
     ctx: AdapterContext,
     site: SiteData,

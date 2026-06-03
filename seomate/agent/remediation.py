@@ -454,22 +454,7 @@ _add(RemediationSpec(
 ))
 
 # --- P0 strategic foundation (analysis/strategy a session produces) ---
-_add(RemediationSpec(
-    "P0-01", FixClass.SESSION, FixType.CONTENT,
-    target="keyword strategy / tracked-query set",
-    concrete_change="Classify every tracked query by intent (transactional / commercial / informational / navigational) from its SERP shape, and map each to the page type that should serve it. Record the map in the strategy.",
-    required_inputs=["tracked keyword list", "SERP data (DataForSEO)"],
-    verify="re-audit P0-01: every tracked query carries an intent label",
-    automatable=True, risk="low",
-))
-_add(RemediationSpec(
-    "P0-06", FixClass.SESSION, FixType.CONTENT,
-    target="keyword strategy",
-    concrete_change="Derive a buyer-journey stage (awareness / consideration / decision) per keyword from intent + query patterns; use it to pick the right page type per target.",
-    required_inputs=["keyword list", "intent labels (P0-01)"],
-    verify="re-audit P0-06: every keyword has a journey stage",
-    automatable=True, risk="low", depends_on=["P0-01"],
-))
+# (P0-01 intent + P0-06 journey moved to Strategy/Competitive, June 2026.)
 _add(RemediationSpec(
     "P0-10", FixClass.SESSION, FixType.CONTENT,
     target="pages weak on query-content alignment",

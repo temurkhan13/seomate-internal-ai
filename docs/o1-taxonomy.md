@@ -1357,7 +1357,7 @@ Bundled.
 **Evidence weight:** Probable
 
 ### Step 1 — Definition
-The page contains sufficient word count and topical coverage to meaningfully address the query intent. Measured as page word count benchmarked against competitor pages ranking for the same query, rather than against a fixed numeric threshold. This variable also stands in for the leaked Google feature `numTokens` (token count after Google's tokenisation pipeline) — Google's exact tokeniser is not disclosed, so word count plus our own standard tokenisation serve as the measurable proxy; treating `numTokens` as an independent variable produced redundant tracking with no separable signal.
+The page contains sufficient word count and topical coverage to meaningfully address the query intent. Measured intrinsically as page word count + topical coverage against intent-appropriate thin / optimal bands (competitor benchmarking is the Competitive module's job, not the audit's). This variable also stands in for the leaked Google feature `numTokens` (token count after Google's tokenisation pipeline) — Google's exact tokeniser is not disclosed, so word count plus our own standard tokenisation serve as the measurable proxy; treating `numTokens` as an independent variable produced redundant tracking with no separable signal.
 
 ### Step 2 — Citations
 1. **Google Search Central — Helpful Content guidance** (https://developers.google.com/search/docs/fundamentals/creating-helpful-content, Google, accessed May 2026). Recommends content provide substantial, complete, comprehensive descriptions of the topic and offer insightful analysis beyond obvious observations. Google does not specify minimum word count, but explicitly endorses depth and comprehensiveness.
@@ -1369,19 +1369,19 @@ The page contains sufficient word count and topical coverage to meaningfully add
 Google endorses depth and comprehensiveness but explicitly denies word count as an algorithmic factor. Practitioner research correlates word count with rankings, particularly for informational queries. The honest interpretation: word count is a proxy for topical coverage, not a direct factor. Qualifies as **Probable**.
 
 ### Step 4 — Data source(s)
-- **Primary: DataForSEO On-Page API** field `plain_text_word_count` per page.
-- **Comparative analysis: our own.** Compare each page's word count to the average of pages ranking for the same target query (sourced via DataForSEO SERP API).
+- **Primary: DataForSEO On-Page API** field `plain_text_word_count` per page, graded against intent-appropriate thin / optimal word-count bands.
+- **Intrinsic grading: our own.** Compare each page's word count to intent-appropriate thin / optimal bands; no competitor data.
 
 ### Step 5 — Verification
-DataForSEO confirms word count returned per page. Comparative benchmark requires SERP fetches (additional cost). Granularity required: per-page integer plus query-relative percentile. Granularity delivered: by composition.
+DataForSEO confirms word count returned per page. Granularity required: per-page integer plus a thin / optimal band. Granularity delivered: direct.
 
 ### Step 6 — Cost
-Bundled for the per-page count. Comparative benchmarking adds DataForSEO SERP API cost (~$0.001 per query) when fetching competitor data.
+Bundled for the per-page count (no competitor fetch).
 
 ### Step 7 — Dependencies and cross-references
 - **Subsumes:** P1-40 (`numTokens` leaked feature — collapsed into this entry as proxy in May 2026 dedup audit).
-- **Depends on:** P0-13 (target keyword) and SERP data for the keyword (P0-12 or P3-related).
-- **Cross-pillar:** P4-02 (content depth vs SERP competitor average) — same concept reframed at content operations level.
+- **Depends on:** P0-13 (target keyword).
+- **Cross-pillar:** P4-02 (content freshness, intrinsic) — same concept reframed at content operations level.
 
 ---
 
@@ -1961,7 +1961,7 @@ Spelling: bundled. Grammar: free at low volume (LanguageTool's free tier covers 
 
 ---
 
-## P0-01 — Search intent classification per query
+## P0-01 — Search intent classification per query *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Consensus
@@ -1995,7 +1995,7 @@ Rule-based classification: free. LLM fallback: ~$0.0001 per query at GPT-4o-mini
 
 ---
 
-## P0-02 — Search volume per keyword (US monthly)
+## P0-02 — Search volume per keyword (US monthly) *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Consensus
@@ -2028,7 +2028,7 @@ DataForSEO Keywords Data API: approximately $0.0001–$0.0002 per keyword. For a
 
 ---
 
-## P0-03 — Keyword difficulty score per keyword
+## P0-03 — Keyword difficulty score per keyword *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Probable
@@ -2061,7 +2061,7 @@ Bundled with DataForSEO Keywords Data per-keyword cost.
 
 ---
 
-## P0-04 — Cost-per-click as commercial value indicator
+## P0-04 — Cost-per-click as commercial value indicator *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Probable
@@ -2092,7 +2092,7 @@ Bundled with DataForSEO Keywords Data per-keyword cost.
 
 ---
 
-## P0-05 — SERP feature presence per query
+## P0-05 — SERP feature presence per query *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Consensus
@@ -2123,7 +2123,7 @@ DataForSEO SERP API: approximately $0.001 per query (live search). For a pilot s
 
 ---
 
-## P0-06 — Buyer journey stage per keyword
+## P0-06 — Buyer journey stage per keyword *(removed, moved to Strategy / Competitive, June 2026)*
 
 **Pillar:** Strategic Foundation
 **Evidence weight:** Probable
@@ -6099,7 +6099,7 @@ A site passes Panda site-wide quality screening when ALL of the following rules 
 
 1. **Originality across the site is high.** Aggregate P4-07 originality scores show fewer than ~10% of pages flagged as low-originality (templated, near-duplicate of external sources, AI-generated boilerplate).
 2. **Mass-produced content not present.** P4-21 mass-produced content detection finds no large clusters of templated, low-substance pages.
-3. **Thin content proportion is low.** Fewer than ~10% of indexable pages are thin (under-substance for the topic, under target word count for query intent, under SERP-competitor-average from P4-08).
+3. **Thin content proportion is low.** Fewer than ~10% of indexable pages are thin (under-substance for the topic, under the intent-appropriate word-count band from P1-34).
 4. **Sourcing is broadly present.** Substantive factual claims across the site are sourced (P4-10) at acceptable density.
 5. **Insightful analysis is present in the substantive page set.** P4-09 insightfulness scores are not uniformly low; flagship content adds analytical value.
 6. **No site-wide content-farm pattern.** Site does not exhibit content-farm hallmarks (high publication velocity with low per-page substance, no named authors, generic stock-image headers, monetisation-driven topic selection unrelated to expertise).

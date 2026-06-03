@@ -156,7 +156,7 @@ def _extract_metrics(item: dict) -> dict[str, Any]:
 # ─── P0-02 — Search volume distribution ─────────────────────────────────────
 
 
-@register_extractor("P0-02")
+# unregistered (P0-02 moved to Strategy / Competitive, June 2026):
 async def capture_p0_02(
     ctx: AdapterContext,
     site: SiteData,
@@ -248,7 +248,7 @@ async def capture_p0_02(
 # ─── P0-03 — Keyword difficulty distribution ────────────────────────────────
 
 
-@register_extractor("P0-03")
+# unregistered (P0-03 moved to Strategy / Competitive, June 2026):
 async def capture_p0_03(
     ctx: AdapterContext,
     site: SiteData,
@@ -350,7 +350,7 @@ async def capture_p0_03(
 # ─── P0-04 — Cost-per-click distribution ────────────────────────────────────
 
 
-@register_extractor("P0-04")
+# unregistered (P0-04 moved to Strategy / Competitive, June 2026):
 async def capture_p0_04(
     ctx: AdapterContext,
     site: SiteData,
