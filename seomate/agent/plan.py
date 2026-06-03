@@ -357,6 +357,12 @@ async def audit_diff(site_domain: str) -> dict[str, Any] | None:
             if (cur_pct is not None and prev_pct is not None)
             else None
         )
+        # Suppress the delta when either side has too small a graded base: the % is
+        # then dominated by a couple of vars, so a "swing" (e.g. P3 backlinks going
+        # 58% -> 0% as the sub lapsed) is a measurability artefact, not real change.
+        # Variable-level newly-passed/failed below stays accurate regardless.
+        if delta is not None and min(c["graded"], pv["graded"]) < 3:
+            delta = None
         pillars.append({
             "pillar": p,
             "label": _PILLAR_LABEL[p],
