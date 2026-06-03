@@ -158,7 +158,7 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
 # "binding constraint is X" call) stays a session's job, saved to the vault.
 
 _PILLAR_LABEL = {
-    "P0": "Strategy & keywords",
+    "P0": "Relevance & structure",
     "P1": "On-page",
     "P2": "Technical",
     "P3": "Off-page authority",
@@ -267,4 +267,96 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
         "by_fix_class": plan["by_fix_class"],
         "positioning": positioning,
         "waves": waves,
+    }
+
+
+async def audit_diff(site_domain: str) -> dict[str, Any] | None:
+    """Compare the latest two audits for a domain , the Loop's "what moved".
+
+    Returns per-pillar health deltas + the variables that newly passed or newly
+    failed since the previous audit. Returns None when the domain has fewer than
+    two audits. Free (DB reads only). Robust to a taxonomy-version change between
+    the two audits: variables present in only one audit are simply not counted as
+    a pass/fail transition.
+    """
+    from seomate.taxonomy import Catalog
+
+    async with session_scope() as s:
+        rows = (
+            await s.execute(
+                select(Audit.audit_id, Audit.started_at)
+                .where(Audit.site_domain == site_domain)
+                .order_by(Audit.started_at.desc())
+                .limit(2)
+            )
+        ).all()
+        if len(rows) < 2:
+            return None
+        cur_id, cur_at = rows[0]
+        prev_id, prev_at = rows[1]
+
+        async def _statuses(aid: UUID) -> dict[str, tuple[str, str]]:
+            r = (
+                await s.execute(
+                    select(Capture.variable_id, Capture.pillar, Capture.status).where(
+                        Capture.audit_id == aid
+                    )
+                )
+            ).all()
+            return {vid: (pillar, status) for vid, pillar, status in r}
+
+        cur = await _statuses(cur_id)
+        prev = await _statuses(prev_id)
+
+    cat = Catalog.from_file()
+
+    def _name(vid: str) -> str:
+        v = cat.get(vid)
+        return v.name if v else ""
+
+    def _pillar_health(m: dict[str, tuple[str, str]]) -> dict[str, dict[str, int]]:
+        h: dict[str, dict[str, int]] = {}
+        for _vid, (pillar, status) in m.items():
+            d = h.setdefault(pillar, {"passed": 0, "graded": 0})
+            if status in ("passed", "failed", "partial"):
+                d["graded"] += 1
+                if status == "passed":
+                    d["passed"] += 1
+        return h
+
+    ph_cur, ph_prev = _pillar_health(cur), _pillar_health(prev)
+    pillars = []
+    for p in sorted(_PILLAR_LABEL):
+        c = ph_cur.get(p, {"passed": 0, "graded": 0})
+        pv = ph_prev.get(p, {"passed": 0, "graded": 0})
+        cur_pct = round(100 * c["passed"] / c["graded"]) if c["graded"] else None
+        prev_pct = round(100 * pv["passed"] / pv["graded"]) if pv["graded"] else None
+        delta = (
+            cur_pct - prev_pct
+            if (cur_pct is not None and prev_pct is not None)
+            else None
+        )
+        pillars.append({
+            "pillar": p,
+            "label": _PILLAR_LABEL[p],
+            "prev_pct": prev_pct,
+            "cur_pct": cur_pct,
+            "delta": delta,
+        })
+
+    newly_passed, newly_failed = [], []
+    for vid, (pillar, status) in cur.items():
+        prev_status = prev.get(vid, (None, None))[1]
+        if prev_status in ("failed", "partial") and status == "passed":
+            newly_passed.append({"variable_id": vid, "name": _name(vid), "pillar": pillar})
+        elif prev_status == "passed" and status in ("failed", "partial"):
+            newly_failed.append({"variable_id": vid, "name": _name(vid), "pillar": pillar})
+
+    return {
+        "has_diff": True,
+        "current_started_at": str(cur_at) if cur_at else None,
+        "previous_started_at": str(prev_at) if prev_at else None,
+        "pillars": pillars,
+        "newly_passed": sorted(newly_passed, key=lambda x: x["variable_id"]),
+        "newly_failed": sorted(newly_failed, key=lambda x: x["variable_id"]),
     }
