@@ -250,6 +250,209 @@ _add(RemediationSpec(
 ))
 
 
+# --- P1 on-page + P2 technical (session: repo / CMS / config edits) ---
+_add(RemediationSpec(
+    "P1-03", FixClass.SESSION, FixType.METADATA,
+    target="per-page <title>",
+    concrete_change="Ensure each page's title contains its target keyword (naturally, near the front), per the keyword-to-page map.",
+    required_inputs=["target keyword per page (P0-13)", "title-field access"],
+    verify="re-audit P1-03: titles include the target keyword",
+    automatable=False, risk="low", depends_on=["P0-13"],
+))
+_add(RemediationSpec(
+    "P1-09", FixClass.SESSION, FixType.METADATA,
+    target="per-page meta description",
+    concrete_change="Include the target keyword in each meta description while keeping it readable and compelling.",
+    required_inputs=["target keyword per page", "meta-field access"],
+    verify="re-audit P1-09: meta descriptions include the target keyword",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-12", FixClass.SESSION, FixType.TEMPLATE,
+    target="page templates",
+    concrete_change="Ensure exactly one H1 per page; demote extra H1s to H2 where they are really subheadings.",
+    required_inputs=["template access"],
+    verify="re-audit P1-12: every page has a single H1",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P1-13", FixClass.SESSION, FixType.CONTENT,
+    target="page H1",
+    concrete_change="Include the target keyword in the H1 naturally (not stuffed).",
+    required_inputs=["target keyword per page", "content access"],
+    verify="re-audit P1-13: H1 includes the target keyword",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-15", FixClass.SESSION, FixType.TEMPLATE,
+    target="page headings",
+    concrete_change="Fix heading hierarchy: no skipped levels (H1 -> H2 -> H3), headings used for structure not styling.",
+    required_inputs=["template/content access"],
+    verify="re-audit P1-15: heading hierarchy is well-formed",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P1-17", FixClass.SESSION, FixType.CONFIG,
+    target="URL slugs + redirects",
+    concrete_change="Include the target keyword in slugs for new pages; rename existing URLs only where worthwhile, always with a 301 from the old URL.",
+    required_inputs=["routing/slug access", "redirect capability"],
+    verify="re-audit P1-17: target keyword present in slug",
+    automatable=False, risk="medium",
+    notes="Renaming live URLs needs 301s to avoid breaking links; prefer applying to new pages.",
+))
+_add(RemediationSpec(
+    "P1-18", FixClass.SESSION, FixType.CONFIG,
+    target="URL slugs + redirects",
+    concrete_change="Make slugs readable: lowercase, hyphenated, no query-string IDs or stop-word noise. Add 301s when changing existing URLs.",
+    required_inputs=["routing/slug access", "redirect capability"],
+    verify="re-audit P1-18: slugs are clean and readable",
+    automatable=False, risk="medium",
+))
+_add(RemediationSpec(
+    "P1-22", FixClass.SESSION, FixType.SCHEMA,
+    target="JSON-LD blocks",
+    concrete_change="Make existing schema complete + valid: required properties present, correct schema.org types (no invented types), zero validator errors.",
+    required_inputs=["template access"],
+    verify="re-audit P1-22: schema validates with required properties",
+    automatable=True, risk="low", depends_on=["P1-21"],
+))
+_add(RemediationSpec(
+    "P1-23", FixClass.SESSION, FixType.INTERNAL_LINKS,
+    target="under-linked pages",
+    concrete_change="Add contextual inbound internal links to pages with too few, from relevant higher-authority pages.",
+    required_inputs=["content/template access", "the low-inbound list from the audit"],
+    verify="re-audit P1-23: inbound internal link count above threshold",
+    automatable=False, risk="low", depends_on=["P2-28"],
+))
+_add(RemediationSpec(
+    "P1-26", FixClass.SESSION, FixType.CONTENT,
+    target="outbound links",
+    concrete_change="Add a few relevant, authoritative outbound links on thin pages; replace or remove low-quality ones.",
+    required_inputs=["content access"],
+    verify="re-audit P1-26: outbound links are relevant + authoritative",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-28", FixClass.SESSION, FixType.MEDIA,
+    target="<img> alt attributes",
+    concrete_change="Add descriptive, accurate alt text to images missing it (decorative images get empty alt). Draft from image context for review.",
+    required_inputs=["media/template access"],
+    verify="re-audit P1-28: alt-text coverage above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-31", FixClass.SESSION, FixType.METADATA,
+    target="<head> Open Graph tags",
+    concrete_change="Add Open Graph tags (og:title, og:description, og:image, og:url, og:type) site-wide via the template.",
+    required_inputs=["template access", "a default share image"],
+    verify="re-audit P1-31: Open Graph tags present",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P1-37", FixClass.SESSION, FixType.CONTENT,
+    target="pages weak on topic entities",
+    concrete_change="Ensure each page substantively covers the key entities for its target topic (what a strong page on that topic mentions). Draft additions for review.",
+    required_inputs=["content access", "target topic per page"],
+    verify="re-audit P1-37: entity match above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-38", FixClass.SESSION, FixType.CONTENT,
+    target="duplicative / low-originality pages",
+    concrete_change="Rewrite duplicated or boilerplate content to be original and specific to the page. Draft rewrites for review.",
+    required_inputs=["content access"],
+    verify="re-audit P1-38: originality score above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P1-41", FixClass.SESSION, FixType.TEMPLATE,
+    target="article template",
+    concrete_change="Expose a visible published + updated date on articles, and keep updated dates honest (bump only when content actually changes).",
+    required_inputs=["template access"],
+    verify="re-audit P1-41: byline date present",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P1-47", FixClass.SESSION, FixType.SCHEMA,
+    target="page templates (breadcrumb nav + JSON-LD)",
+    concrete_change="Add breadcrumb navigation UI plus matching BreadcrumbList JSON-LD reflecting each page's place in the hierarchy.",
+    required_inputs=["template access", "site hierarchy"],
+    verify="re-audit P1-47: breadcrumb nav + BreadcrumbList schema present",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P2-04", FixClass.SESSION, FixType.CONFIG,
+    target="non-indexed pages that should rank",
+    concrete_change="Remove the indexation blocker (stray noindex, wrong canonical, robots disallow, soft-404) and request indexing. Leave intentionally-excluded pages alone.",
+    required_inputs=["template/robots access", "the non-indexed list (GSC)"],
+    verify="re-audit P2-04: target pages indexed",
+    automatable=False, risk="medium",
+))
+_add(RemediationSpec(
+    "P2-08", FixClass.SESSION, FixType.MEDIA,
+    target="LCP element + critical path",
+    concrete_change="Improve LCP: preload/optimise the LCP image (modern format, right dimensions), cut render-blocking CSS/JS, prioritise above-fold content. Re-test with PSI.",
+    required_inputs=["template/asset access"],
+    verify="re-audit P2-08: LCP within the 'good' threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P2-12", FixClass.SESSION, FixType.CONFIG,
+    target="render-blocking resources",
+    concrete_change="Improve FCP: inline critical CSS, defer non-critical JS, reduce blocking requests. Re-test with PSI.",
+    required_inputs=["build/template access"],
+    verify="re-audit P2-12: FCP within the 'good' threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P2-14", FixClass.SESSION, FixType.CONFIG,
+    target="server response + HTML payload",
+    concrete_change="Cut HTML-level load time: reduce server response (caching/CDN), shrink the HTML payload, enable compression.",
+    required_inputs=["hosting/build access"],
+    verify="re-audit P2-14: HTML load speed improved",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P2-17", FixClass.SESSION, FixType.TEMPLATE,
+    target="mobile layout",
+    concrete_change="Fix mobile usability: correct viewport meta, adequate tap-target sizes/spacing, legible fonts, no horizontal scroll.",
+    required_inputs=["template/CSS access"],
+    verify="re-audit P2-17: mobile usability above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P2-23", FixClass.SESSION, FixType.INTERNAL_LINKS,
+    target="deep pages + navigation",
+    concrete_change="Flatten crawl depth: add links so important pages sit within ~3 clicks of the homepage (nav, hubs, related links).",
+    required_inputs=["template/content access"],
+    verify="re-audit P2-23: important pages within target crawl depth",
+    automatable=False, risk="low", depends_on=["P0-12"],
+))
+_add(RemediationSpec(
+    "P2-27", FixClass.SESSION, FixType.CONTENT,
+    target="broken outbound links",
+    concrete_change="Fix or remove external links returning 4xx/5xx; update to the current URL or an equivalent source.",
+    required_inputs=["content access", "the broken-link list from the audit"],
+    verify="re-audit P2-27: no broken external links",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P2-30", FixClass.SESSION, FixType.MEDIA,
+    target="heavy pages (images dominate the payload)",
+    concrete_change="Reduce page weight: compress + correctly size images, serve modern formats, minify CSS/JS, defer non-critical assets. Homepage was ~3.5 MB (2.37 MB images).",
+    required_inputs=["asset/build access"],
+    verify="re-audit P2-30: page weight within threshold",
+    automatable=False, risk="low", depends_on=["P2-31"],
+))
+_add(RemediationSpec(
+    "P2-32", FixClass.SESSION, FixType.TEMPLATE,
+    target="below-fold images/iframes",
+    concrete_change="Add loading='lazy' to below-the-fold images and iframes; keep above-fold/LCP images eager.",
+    required_inputs=["template access"],
+    verify="re-audit P2-32: lazy loading applied below the fold",
+    automatable=True, risk="low",
+))
+
 # --- P0 strategic foundation (analysis/strategy a session produces) ---
 _add(RemediationSpec(
     "P0-01", FixClass.SESSION, FixType.CONTENT,
