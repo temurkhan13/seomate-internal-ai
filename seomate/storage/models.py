@@ -224,3 +224,37 @@ class AdapterCall(Base):
         Index("idx_adapter_calls_adapter", "audit_id", "adapter"),
         Index("idx_adapter_calls_started", "started_at"),
     )
+
+
+class SavedAnalysis(Base):
+    """A persisted competitive or strategy analysis run.
+
+    The auditor owns the audit tables; this stores the platform's own derived /
+    paid analyses (competitive runs, strategy snapshots) so the UI can list past
+    runs (like audits) and revisit them for free instead of re-paying DataForSEO.
+    """
+
+    __tablename__ = "saved_analyses"
+
+    analysis_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    target: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+    cost_gbp: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('competitive', 'strategy')",
+            name="saved_analyses_kind_check",
+        ),
+        Index("idx_saved_kind_target_created", "kind", "target", "created_at"),
+    )

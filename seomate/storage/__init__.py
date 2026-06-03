@@ -11,13 +11,14 @@ from seomate.storage.db import (
     get_sync_engine,
     session_scope,
 )
-from seomate.storage.models import AdapterCall, Audit, Base, Capture
+from seomate.storage.models import AdapterCall, Audit, Base, Capture, SavedAnalysis
 
 __all__ = [
     "AdapterCall",
     "Audit",
     "Base",
     "Capture",
+    "SavedAnalysis",
     "DatabaseSettings",
     "get_async_engine",
     "get_async_session_factory",
