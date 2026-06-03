@@ -233,6 +233,10 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
     for p in sorted(_PILLAR_LABEL):
         d = health.get(p, {})
         passed, failed, partial = d.get("passed", 0), d.get("failed", 0), d.get("partial", 0)
+        # "unmeasured" = everything with no pass/fail bar (unmeasurable, not-applicable,
+        # error). Surfaced so a health % over a tiny graded sample (e.g. P3 backlinks,
+        # 1 graded + 34 unmeasured without the subscription) is not misread as "broken".
+        unmeasured = d.get("unmeasurable", 0) + d.get("not_applicable", 0) + d.get("error", 0)
         graded = passed + failed + partial
         positioning.append({
             "pillar": p,
@@ -240,6 +244,8 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
             "passed": passed,
             "failed": failed,
             "partial": partial,
+            "graded": graded,
+            "unmeasured": unmeasured,
             "health_pct": round(100 * passed / graded) if graded else None,
             "findings": findings_by_pillar.get(p, []),
         })
@@ -279,7 +285,15 @@ async def audit_diff(site_domain: str) -> dict[str, Any] | None:
     the two audits: variables present in only one audit are simply not counted as
     a pass/fail transition.
     """
+    from datetime import timedelta
+
     from seomate.taxonomy import Catalog
+
+    # Skip same-session re-runs: the "previous" audit should be a real prior state,
+    # not a re-run a few hours earlier (whose deltas are LLM-judgment variance, not
+    # real change). Pick the most recent audit at least MIN_GAP older than the latest;
+    # if none exists, fall back to the immediate previous and flag it as a re-run.
+    MIN_GAP = timedelta(hours=12)
 
     async with session_scope() as s:
         rows = (
@@ -287,13 +301,20 @@ async def audit_diff(site_domain: str) -> dict[str, Any] | None:
                 select(Audit.audit_id, Audit.started_at)
                 .where(Audit.site_domain == site_domain)
                 .order_by(Audit.started_at.desc())
-                .limit(2)
+                .limit(12)
             )
         ).all()
         if len(rows) < 2:
             return None
         cur_id, cur_at = rows[0]
-        prev_id, prev_at = rows[1]
+        prev_row = next(
+            (r for r in rows[1:] if cur_at and r[1] and (cur_at - r[1]) >= MIN_GAP),
+            None,
+        )
+        rerun_warning = prev_row is None
+        if prev_row is None:
+            prev_row = rows[1]
+        prev_id, prev_at = prev_row
 
         async def _statuses(aid: UUID) -> dict[str, tuple[str, str]]:
             r = (
@@ -354,6 +375,7 @@ async def audit_diff(site_domain: str) -> dict[str, Any] | None:
 
     return {
         "has_diff": True,
+        "rerun_warning": rerun_warning,
         "current_started_at": str(cur_at) if cur_at else None,
         "previous_started_at": str(prev_at) if prev_at else None,
         "pillars": pillars,

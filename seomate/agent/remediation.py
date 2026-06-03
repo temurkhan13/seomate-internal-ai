@@ -115,10 +115,10 @@ _add(RemediationSpec(
     "P2-28", FixClass.SESSION, FixType.INTERNAL_LINKS,
     target="core pages (home, services, relevant hubs) + blog index",
     concrete_change="Add contextual internal links from core/hub pages to the orphaned blog posts; add a related-posts/hub module so no post has 0 inbound links.",
-    required_inputs=["template + content edit access", "the orphan list from the audit (value.sample)"],
+    required_inputs=["template + content edit access", "the orphan list from the capture (value.orphans)"],
     verify="re-audit P2-28: 0 orphan pages (every page >=1 inbound internal link)",
     automatable=True, risk="medium", depends_on=[],
-    notes="Audit found 37/58 orphaned. Highest-impact on-site structural fix.",
+    notes="Highest-impact on-site structural fix when orphans exist; act on the capture's orphan list.",
 ))
 _add(RemediationSpec(
     "P1-24", FixClass.SESSION, FixType.INTERNAL_LINKS,
@@ -439,7 +439,7 @@ _add(RemediationSpec(
 _add(RemediationSpec(
     "P2-30", FixClass.SESSION, FixType.MEDIA,
     target="heavy pages (images dominate the payload)",
-    concrete_change="Reduce page weight: compress + correctly size images, serve modern formats, minify CSS/JS, defer non-critical assets. Homepage was ~3.5 MB (2.37 MB images).",
+    concrete_change="Reduce page weight: compress + correctly size images, serve modern formats, minify CSS/JS, defer non-critical assets (images usually dominate the payload; see the capture for the per-page weights).",
     required_inputs=["asset/build access"],
     verify="re-audit P2-30: page weight within threshold",
     automatable=False, risk="low", depends_on=["P2-31"],
