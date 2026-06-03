@@ -250,6 +250,412 @@ _add(RemediationSpec(
 ))
 
 
+# --- P0 strategic foundation (analysis/strategy a session produces) ---
+_add(RemediationSpec(
+    "P0-01", FixClass.SESSION, FixType.CONTENT,
+    target="keyword strategy / tracked-query set",
+    concrete_change="Classify every tracked query by intent (transactional / commercial / informational / navigational) from its SERP shape, and map each to the page type that should serve it. Record the map in the strategy.",
+    required_inputs=["tracked keyword list", "SERP data (DataForSEO)"],
+    verify="re-audit P0-01: every tracked query carries an intent label",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P0-06", FixClass.SESSION, FixType.CONTENT,
+    target="keyword strategy",
+    concrete_change="Derive a buyer-journey stage (awareness / consideration / decision) per keyword from intent + query patterns; use it to pick the right page type per target.",
+    required_inputs=["keyword list", "intent labels (P0-01)"],
+    verify="re-audit P0-06: every keyword has a journey stage",
+    automatable=True, risk="low", depends_on=["P0-01"],
+))
+_add(RemediationSpec(
+    "P0-10", FixClass.SESSION, FixType.CONTENT,
+    target="pages weak on query-content alignment",
+    concrete_change="For each page whose content drifts from its target query, tighten the copy (title, headings, body) to match the query topic so the page aligns semantically.",
+    required_inputs=["target query per page", "content edit access"],
+    verify="re-audit P0-10: page-to-query similarity above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P0-11", FixClass.SESSION, FixType.CONTENT,
+    target="content strategy",
+    concrete_change="Group the site's pages + target keywords into explicit topic clusters; surface gaps and overlaps. Output the cluster map.",
+    required_inputs=["page inventory", "keyword list"],
+    verify="re-audit P0-11: topic clusters defined for the site",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P0-12", FixClass.SESSION, FixType.INTERNAL_LINKS,
+    target="site architecture (pillar pages + cluster links)",
+    concrete_change="Create a pillar page per core topic and wire hub-and-spoke internal links between each pillar and its cluster posts. Draft any missing pillar pages.",
+    required_inputs=["topic clusters (P0-11)", "template + content access"],
+    verify="re-audit P0-12: pillar pages exist with hub-and-spoke linking",
+    automatable=False, risk="medium", depends_on=["P0-11"],
+))
+_add(RemediationSpec(
+    "P0-13", FixClass.SESSION, FixType.CONTENT,
+    target="keyword strategy",
+    concrete_change="Map each target keyword to exactly one canonical page; flag cannibalisation (two pages, one keyword) and uncovered keywords (no page).",
+    required_inputs=["keyword list", "page inventory"],
+    verify="re-audit P0-13: 1:1 keyword-to-page map, no unresolved cannibalisation",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P0-16", FixClass.OFFSITE, FixType.OFFSITE,
+    target="brand entity (on-page + off-site)",
+    concrete_change="Earn a Knowledge Graph entry: session ships consistent Organization schema + sameAs to official profiles (on-page); off-site, create a Wikidata item and build consistent authoritative mentions. KG recognition follows the off-site signals.",
+    required_inputs=["brand NAP + official profile URLs", "off-site entity-building effort"],
+    verify="re-audit P0-16: brand resolves as a Knowledge Graph entity",
+    automatable=False, risk="low", effort="campaign",
+    notes="On-page part is session (schema/sameAs); KG recognition itself is off-site + time.",
+))
+
+# --- P4 content operations / E-E-A-T (session drafts; human confirms facts) ---
+_add(RemediationSpec(
+    "P4-01", FixClass.HUMAN, FixType.CONTENT,
+    target="editorial calendar",
+    concrete_change="Establish and hold a regular publishing cadence. A session can draft posts to a calendar; a human approves and publishes on schedule.",
+    required_inputs=["editorial owner", "topic pipeline"],
+    verify="re-audit P4-01: consistent publishing cadence over the trailing window",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P4-03", FixClass.SESSION, FixType.TEMPLATE,
+    target="blog/article template + posts",
+    concrete_change="Add a visible author byline to every article (template field + assign an author per post).",
+    required_inputs=["author name(s) per post", "template access"],
+    verify="re-audit P4-03: every article shows a byline",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-04", FixClass.SESSION, FixType.CONTENT,
+    target="author bio block + bio/team pages",
+    concrete_change="Build an author-bio block (name, role, expertise, link) and add it to articles/team pages. Draft copy from verifiable on-site facts; insert TODO placeholders for credentials the human must confirm. Do NOT invent credentials.",
+    required_inputs=["real author credentials (human-confirmed)", "template access"],
+    verify="re-audit P4-04: bylined authors link to a bio with credentials",
+    automatable=False, risk="low", depends_on=["P4-03"],
+    notes="Session drafts structure + verifiable copy; human supplies real credentials.",
+))
+_add(RemediationSpec(
+    "P4-05", FixClass.OFFSITE, FixType.OFFSITE,
+    target="author entity (off-site)",
+    concrete_change="Make key authors recognisable entities: session adds Person schema + sameAs (on-page); off-site, build the author's presence (Wikidata, authoritative profiles, bylined external work) so KG/LLMs disambiguate them.",
+    required_inputs=["author profile URLs", "off-site authoring effort"],
+    verify="re-audit P4-05: author resolves as a recognised entity",
+    automatable=False, risk="low", effort="campaign", depends_on=["P4-04"],
+))
+_add(RemediationSpec(
+    "P4-06", FixClass.SESSION, FixType.CONTENT,
+    target="E-E-A-T signal cluster",
+    concrete_change="Lift the aggregate E-E-A-T score by resolving its inputs: byline (P4-03), author bio (P4-04), Person/Org schema (P6-20), citations (P6-03/P4-10). The score rises as those pass.",
+    required_inputs=["the component fixes"],
+    verify="re-audit P4-06: E-E-A-T aggregate above threshold",
+    automatable=False, risk="low", depends_on=["P4-03", "P4-04", "P6-20"],
+))
+_add(RemediationSpec(
+    "P4-07", FixClass.SESSION, FixType.CONTENT,
+    target="thin / derivative pages",
+    concrete_change="Rewrite thin or derivative pages to add original substance: specific examples, first-hand detail, depth the SERP lacks. Draft the rewrites for review.",
+    required_inputs=["content edit access", "subject context (human confirms specifics)"],
+    verify="re-audit P4-07: flagged pages meet originality/substance threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-09", FixClass.SESSION, FixType.CONTENT,
+    target="surface-level pages",
+    concrete_change="Add genuine analysis (the 'so what', trade-offs, implications) beyond surface description on flagged pages. Draft for review.",
+    required_inputs=["content access"],
+    verify="re-audit P4-09: analysis depth above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-10", FixClass.SESSION, FixType.CONTENT,
+    target="claims lacking sources",
+    concrete_change="Add outbound citations to authoritative sources for the factual claims on substantive pages. Draft the citations for review.",
+    required_inputs=["content access"],
+    verify="re-audit P4-10: sourcing/evidence density meets threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-12", FixClass.SESSION, FixType.TEMPLATE,
+    target="content taxonomy (categories + tags)",
+    concrete_change="Implement a clean category + tag structure, apply it to posts, and expose category/tag archive pages.",
+    required_inputs=["CMS taxonomy access"],
+    verify="re-audit P4-12: posts carry coherent categories/tags",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P4-13", FixClass.SESSION, FixType.CONTENT,
+    target="long article templates/content",
+    concrete_change="Restructure flagged long pages into the three-layer pattern: a ~50-word direct answer up top (containing the primary keyword), a 100-150 word 'why it matters', then 1000+ words of detail (1200+ total). Draft the restructure.",
+    required_inputs=["content access"],
+    verify="re-audit P4-13: flagged pages follow the three-layer structure",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-15", FixClass.SESSION, FixType.CONTENT,
+    target="research / data-backed pages",
+    concrete_change="Add a methodology disclosure (how the data/claims were produced) wherever research or statistics are presented. Draft it from the page's own content.",
+    required_inputs=["content access"],
+    verify="re-audit P4-15: methodology disclosed where research is presented",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P4-17", FixClass.HUMAN, FixType.CONTENT,
+    target="YMYL pages",
+    concrete_change="Raise rigour on any money/health/safety pages: qualified-reviewer sign-off, credentials, citations, last-reviewed date. Session adds the structural signals; a qualified human must review the substance.",
+    required_inputs=["qualified reviewer"],
+    verify="re-audit P4-17: YMYL pages carry elevated E-E-A-T signals + review",
+    automatable=False, risk="medium", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P4-21", FixClass.SESSION, FixType.CONTENT,
+    target="pages flagged mass-produced/low-effort",
+    concrete_change="Rewrite or consolidate templated/low-effort pages to add real value, or remove them. Draft the rewrite/prune list for review.",
+    required_inputs=["content access"],
+    verify="re-audit P4-21: flagged pages no longer read as mass-produced",
+    automatable=False, risk="medium",
+))
+_add(RemediationSpec(
+    "P4-22", FixClass.SESSION, FixType.CONTENT,
+    target="site-wide content quality",
+    concrete_change="Lift site-wide quality: identify the thin/duplicate/low-value pages dragging the average and improve or prune them. Draft the action list.",
+    required_inputs=["content access", "analytics (to spot low-value pages)"],
+    verify="re-audit P4-22: site-wide quality above threshold",
+    automatable=False, risk="medium", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P4-23", FixClass.SESSION, FixType.CONTENT,
+    target="page headlines/titles vs body",
+    concrete_change="Rewrite clickbait or exaggerated headlines so they accurately reflect the page content. Draft for review.",
+    required_inputs=["content access"],
+    verify="re-audit P4-23: headlines match content (no clickbait)",
+    automatable=False, risk="low",
+))
+
+# --- P5 local SEO (mostly GBP-owner; one on-page schema fix) ---
+_add(RemediationSpec(
+    "P5-26", FixClass.SESSION, FixType.SCHEMA,
+    target="global template <head> / contact page",
+    concrete_change="Add LocalBusiness JSON-LD (name, address, geo, hours, phone, url) site-wide or on the contact/location page.",
+    required_inputs=["template access", "verified NAP + hours"],
+    verify="re-audit P5-26: valid LocalBusiness schema present",
+    automatable=True, risk="low",
+))
+_add(RemediationSpec(
+    "P5-01", FixClass.OWNER, FixType.OFFSITE,
+    target="Google Business Profile",
+    concrete_change="Proximity is a function of a verified GBP at a real address in the target area; it is not tunable by content. Ensure a correctly-located verified GBP exists.",
+    required_inputs=["GBP owner access", "real local address"],
+    verify="re-audit P5-01: verified GBP in the target area",
+    automatable=False, risk="low",
+    notes="Inherent ranking factor; only addressable via a real verified local presence.",
+))
+_add(RemediationSpec(
+    "P5-06", FixClass.OFFSITE, FixType.OFFSITE,
+    target="local citation sources (directories)",
+    concrete_change="Build consistent NAP citations across the major local directories. Session can draft the listing copy + the submission list; submitting needs directory accounts.",
+    required_inputs=["consistent NAP", "directory accounts"],
+    verify="re-audit P5-06: citation count + consistency improved",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P5-12", FixClass.HUMAN, FixType.OFFSITE,
+    target="review acquisition",
+    concrete_change="Run a review-request flow so recent reviews keep arriving (recency decays). Session can draft the request templates; sending needs the customer process.",
+    required_inputs=["customer contact process"],
+    verify="re-audit P5-12: recent reviews present",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-15", FixClass.OWNER, FixType.OFFSITE,
+    target="Google Business Profile",
+    concrete_change="Respond to reviews promptly and set a standing process. Needs GBP access to post responses.",
+    required_inputs=["GBP access (Manager+)"],
+    verify="re-audit P5-15: review response speed improved",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-16", FixClass.HUMAN, FixType.OFFSITE,
+    target="review-request prompts",
+    concrete_change="Encourage reviewers to mention specific services/locations via the review-request wording. Review text itself can't be authored, only nudged.",
+    required_inputs=["review-request process"],
+    verify="re-audit P5-16: service keywords appear in review text",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-18", FixClass.HUMAN, FixType.OFFSITE,
+    target="reviewer mix",
+    concrete_change="Solicit reviews from real customers (including Local Guides) to lift reviewer credibility. Not directly settable.",
+    required_inputs=["customer base"],
+    verify="re-audit P5-18: reviewer credibility improved",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-21", FixClass.OWNER, FixType.MEDIA,
+    target="Google Business Profile",
+    concrete_change="Upload fresh, geotagged photos to the GBP and keep adding them. Needs GBP access.",
+    required_inputs=["GBP access", "real photos"],
+    verify="re-audit P5-21: GBP photo count + freshness improved",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-23", FixClass.OWNER, FixType.OFFSITE,
+    target="Google Business Profile Q&A",
+    concrete_change="Seed and answer GBP Q&A with the real common questions. Needs GBP access.",
+    required_inputs=["GBP access"],
+    verify="re-audit P5-23: GBP Q&A activity present",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P5-24", FixClass.OWNER, FixType.OFFSITE,
+    target="Google Business Profile attributes",
+    concrete_change="Set the applicable GBP attributes (accessibility, ownership, amenities, etc.). Needs GBP access.",
+    required_inputs=["GBP access", "which attributes are true"],
+    verify="re-audit P5-24: GBP attributes populated",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P5-25", FixClass.OWNER, FixType.OFFSITE,
+    target="Google Business Profile",
+    concrete_change="Complete the service area and full opening hours (incl. special hours) on the GBP. Needs GBP access.",
+    required_inputs=["GBP access", "real hours + service area"],
+    verify="re-audit P5-25: service area + hours complete",
+    automatable=False, risk="low",
+))
+
+# --- P6 GEO / AI search ---
+_add(RemediationSpec(
+    "P6-01", FixClass.SESSION, FixType.TEMPLATE,
+    target="page templates + content",
+    concrete_change="Fix heading hierarchy and use semantic HTML (one H1, ordered H2/H3, lists, tables) so LLMs can parse the structure cleanly.",
+    required_inputs=["template/content access"],
+    verify="re-audit P6-01: clean semantic structure / heading hierarchy",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-04", FixClass.SESSION, FixType.CONTENT,
+    target="vague commercial copy",
+    concrete_change="Replace vague phrasing with specific figures (counts, %, timeframes) where the brand has real numbers. Draft using verifiable facts only; flag any figure needing confirmation. Do NOT fabricate.",
+    required_inputs=["real figures (human-confirmed where unknown)"],
+    verify="re-audit P6-04: numerical specificity above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-06", FixClass.SESSION, FixType.CONTENT,
+    target="article/service copy",
+    concrete_change="Add grounded first-person experience framing ('we built', 'in our work') where genuine, signalling first-hand experience. Draft for review.",
+    required_inputs=["content access"],
+    verify="re-audit P6-06: first-person authority markers present + grounded",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-07", FixClass.HUMAN, FixType.CONTENT,
+    target="content / editorial",
+    concrete_change="Publish original research or primary data (survey, benchmark, internal dataset). Needs real data; a session can structure + write it up once the data exists.",
+    required_inputs=["subject-matter author", "real data"],
+    verify="re-audit P6-07: original research / primary data present",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P6-10", FixClass.SESSION, FixType.CONTENT,
+    target="service/topic pages",
+    concrete_change="Add a clear one-line definition ('X is Y') near the top of each key entity/concept page, plus a short glossary where useful. Draft for review.",
+    required_inputs=["content access"],
+    verify="re-audit P6-10: definitional clarity present on key pages",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-11", FixClass.OFFSITE, FixType.OFFSITE,
+    target="Wikidata / Wikipedia",
+    concrete_change="Create a Wikidata item for the brand (achievable now); a Wikipedia article requires meeting notability (off-site, not guaranteed). Session can prep the structured facts.",
+    required_inputs=["notable sources/coverage (for Wikipedia)"],
+    verify="re-audit P6-11: brand present in Wikidata (and Wikipedia if notable)",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P6-12", FixClass.OFFSITE, FixType.OFFSITE,
+    target="off-site brand presence",
+    concrete_change="Increase brand mentions across the open web (the corpus LLMs train on): guest content, PR, community presence, consistent naming. Compounds over time.",
+    required_inputs=["content distribution + PR effort"],
+    verify="re-audit P6-12: brand-mention footprint grown",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P6-16", FixClass.OFFSITE, FixType.OFFSITE,
+    target="press / tier-1 coverage",
+    concrete_change="Earn news + tier-1 publication coverage via digital PR (newsworthy angles, data stories, expert sourcing). Session can draft pitches + press assets.",
+    required_inputs=["PR effort / outreach"],
+    verify="re-audit P6-16: tier-1 coverage present",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P6-20", FixClass.SESSION, FixType.SCHEMA,
+    target="article + global templates",
+    concrete_change="Add Person schema for authors and Organization schema for the brand, linked via sameAs, so the author/org are machine-readable.",
+    required_inputs=["template access", "author + brand profile URLs"],
+    verify="re-audit P6-20: Person + Organization schema present",
+    automatable=True, risk="low", depends_on=["P4-03"],
+))
+_add(RemediationSpec(
+    "P6-22", FixClass.SESSION, FixType.CONTENT,
+    target="shallow topic pages",
+    concrete_change="Expand flagged pages to cover the topic exhaustively (sub-questions, related concepts, edge cases the SERP/PAA shows). Draft the additions for review.",
+    required_inputs=["content access", "(optional) PAA/related-question data"],
+    verify="re-audit P6-22: topic depth above threshold",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-23", FixClass.SESSION, FixType.CONTENT,
+    target="time-sensitive / year-stamped pages",
+    concrete_change="Refresh stale content: update year stamps (e.g. 2024 -> current), refresh figures/claims, and surface a visible last-updated date. Draft for review.",
+    required_inputs=["content access"],
+    verify="re-audit P6-23: time-sensitive pages current + dated",
+    automatable=False, risk="low",
+))
+_add(RemediationSpec(
+    "P6-27", FixClass.OFFSITE, FixType.CONTENT,
+    target="GEO outcome metric",
+    concrete_change="Being cited by ChatGPT/Claude/Gemini is an outcome of citation-worthy content (P6-10/P6-22) + entity authority (P6-11/P6-16/P0-16). Drive those; this follows.",
+    required_inputs=["the upstream content + authority work"],
+    verify="re-audit P6-27: brand cited by >=1 major LLM for a target query",
+    automatable=False, risk="low", effort="campaign", depends_on=["P6-10", "P6-22", "P6-11"],
+))
+_add(RemediationSpec(
+    "P6-29", FixClass.OFFSITE, FixType.OFFSITE,
+    target="Knowledge Graph entity",
+    concrete_change="Complete the brand's KG entity: session ships Organization schema + full sameAs (on-page); off-site, complete the Wikidata item and keep attributes consistent across the web.",
+    required_inputs=["brand profile URLs", "Wikidata edit"],
+    verify="re-audit P6-29: KG entity attributes complete",
+    automatable=False, risk="low", effort="campaign", depends_on=["P0-16"],
+))
+_add(RemediationSpec(
+    "P6-32", FixClass.SESSION, FixType.CONTENT,
+    target="page content + any UGC/templates",
+    concrete_change="Remove prompt-injection vectors: hidden/invisible text (display:none, white-on-white, off-screen), fake [SYSTEM]/[ASSISTANT] syntax, 'ignore previous instructions' patterns, instruction-like HTML comments, keyword-stuffed alt/aria, and any HTML-vs-rendered bait-and-switch.",
+    required_inputs=["content/template access"],
+    verify="re-audit P6-32: no prompt-injection/adversarial content",
+    automatable=False, risk="low",
+))
+
+# --- P3 off-page authority (measure needs the Backlinks sub; improve needs a campaign) ---
+_add(RemediationSpec(
+    "P3-09", FixClass.BUDGET, FixType.OFFSITE,
+    target="off-site link profile",
+    concrete_change="Site-wide authority rises with quality backlinks. Measuring it needs the DataForSEO Backlinks subscription; improving it is a link-acquisition campaign (digital PR, guest content, partnerships).",
+    required_inputs=["DataForSEO Backlinks subscription (to measure)", "link-building effort (to improve)"],
+    verify="re-audit P3-09 after the subscription is active + links acquired",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-28", FixClass.OFFSITE, FixType.OFFSITE,
+    target="Wikipedia source links",
+    concrete_change="Earn citations from Wikipedia articles (be the authoritative source a relevant article cites). Requires genuinely citation-worthy, notable content; not directly placeable.",
+    required_inputs=["citation-worthy content", "relevant Wikipedia articles"],
+    verify="re-audit P3-28: linked as a Wikipedia source",
+    automatable=False, risk="low", effort="campaign",
+))
+
+
 # ── generic fallbacks by pillar (so the planner never drops a finding) ─────────
 _PILLAR_FALLBACK_CLASS = {
     "P0": FixClass.HUMAN,    # relevance/keyword strategy
