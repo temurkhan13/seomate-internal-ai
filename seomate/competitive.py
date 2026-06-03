@@ -193,16 +193,29 @@ async def run_competitive(
                 ][:5]
             auto_discovered = True
 
-        domains = [target, *provided]
-        visibility: list[dict[str, Any]] = []
-        ranked: dict[str, dict[str, dict[str, Any]]] = {}
-        for d in domains:
+        # Pass 1: visibility (the cheap overview) for the target + all candidates.
+        overview: dict[str, dict[str, Any]] = {}
+        for d in [target, *provided]:
             ov = await dfs.domain_rank_overview(
                 d, location_code=location_code, language_code=language_code
             )
             m = _overview_metrics(ov)
             m.update({"domain": d, "is_target": d == target})
-            visibility.append(m)
+            overview[d] = m
+
+        # Drop auto-discovered competitors with no organic presence. A domain that
+        # ranked for one stray keyword (often an academic / edu page) but has zero
+        # ranked keywords overall is not a real business competitor , it only adds
+        # an empty 0/0 row. User-supplied competitors are always kept.
+        if auto_discovered:
+            provided = [c for c in provided if overview[c]["organic_keywords"] > 0]
+
+        domains = [target, *provided]
+        visibility: list[dict[str, Any]] = [overview[d] for d in domains]
+
+        # Pass 2: ranked keywords for the survivors only.
+        ranked: dict[str, dict[str, dict[str, Any]]] = {}
+        for d in domains:
             rk = await dfs.ranked_keywords(
                 d, location_code=location_code, language_code=language_code, limit=keyword_limit
             )
