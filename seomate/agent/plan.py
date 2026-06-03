@@ -212,6 +212,23 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
         d = health.setdefault(pillar, {})
         d[status] = d.get(status, 0) + 1
 
+    # Per-pillar actionable findings , the "why this score" + "how to fix"
+    # drill-down: each failed/partial finding with its evidence + remediation.
+    from seomate.taxonomy import Catalog
+    cat = Catalog.from_file()
+    findings_by_pillar: dict[str, list[dict[str, Any]]] = {}
+    for w in plan["work_orders"]:
+        r = w["remediation"]
+        v = cat.get(w["variable_id"])
+        findings_by_pillar.setdefault(w["pillar"], []).append({
+            "variable_id": w["variable_id"],
+            "name": v.name if v else "",
+            "status": w["diagnostic_status"],
+            "evidence": w["evidence"],
+            "fix_class": r["fix_class"],
+            "concrete_change": r["concrete_change"],
+        })
+
     positioning = []
     for p in sorted(_PILLAR_LABEL):
         d = health.get(p, {})
@@ -224,6 +241,7 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
             "failed": failed,
             "partial": partial,
             "health_pct": round(100 * passed / graded) if graded else None,
+            "findings": findings_by_pillar.get(p, []),
         })
 
     buckets: dict[str, list[dict[str, Any]]] = {k: [] for k, _, _ in _WAVE_META}
