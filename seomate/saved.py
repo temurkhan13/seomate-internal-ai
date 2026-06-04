@@ -62,6 +62,34 @@ async def list_analyses(
     ]
 
 
+async def attach_analysis(
+    analysis_id: str | UUID, analysis: dict[str, Any]
+) -> str | None:
+    """Attach a session-authored strategic read to a saved run's payload.
+
+    The deterministic run stores ``analysis: null``; a Claude session reviews the
+    numbers and writes the judgment, which this persists so it renders on the
+    saved page. Handles both competitive runs (``payload.analysis``) and strategy
+    snapshots (``payload.competitive.analysis``). Returns the id, or None if the
+    run does not exist. The column is reassigned (not mutated in place) so
+    SQLAlchemy flushes the JSON change.
+    """
+    async with session_scope() as s:
+        row = await s.get(SavedAnalysis, UUID(str(analysis_id)))
+        if row is None:
+            return None
+        payload = dict(row.payload or {})
+        if row.kind == "strategy" and isinstance(payload.get("competitive"), dict):
+            comp = dict(payload["competitive"])
+            comp["analysis"] = analysis
+            payload["competitive"] = comp
+        else:
+            payload["analysis"] = analysis
+        row.payload = payload
+        await s.flush()
+        return str(row.analysis_id)
+
+
 async def get_analysis(analysis_id: str | UUID) -> dict[str, Any] | None:
     """One saved analysis with its payload, or None if not found."""
     async with session_scope() as s:
