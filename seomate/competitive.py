@@ -452,12 +452,25 @@ def _match_entity(hits: list, brand: dict[str, Any], domain: str) -> Any:
     are a recognised entity".
     """
     root = brand["root"]
+    dom_root = domain.split(".")[0].lower() if domain else ""
     for h in hits or []:
-        name_tokens = {w for w in re.split(r"[^a-z0-9]+", (h.name or "").lower()) if w}
-        if name_tokens & brand["tokens"] or (root and root in (h.name or "").lower().replace(" ", "")):
+        name = (h.name or "").lower()
+        name_alpha = re.sub(r"[^a-z0-9]", "", name)
+        name_tokens = {w for w in re.split(r"[^a-z0-9]+", name) if w}
+        # Exact brand-token overlap (itransition == itransition).
+        if name_tokens & brand["tokens"]:
             return h
+        # Strong prefix match only when the root is long enough that a prefix is
+        # meaningful: "pixelettetech" prefixes "pixelettetechnologiesltd", but a
+        # 3-letter root like "nix" must NOT match "nixie".
+        if root and len(root) >= 5 and (
+            name_alpha.startswith(root)
+            or (len(name_alpha) >= 5 and root.startswith(name_alpha))
+        ):
+            return h
+        # The entity explicitly points back at the domain (url / sameAs).
         urls = " ".join([h.url or "", *(h.same_as or [])]).lower()
-        if domain and domain in urls:
+        if domain and (domain in urls or (dom_root and f"/{dom_root}" in urls)):
             return h
     return None
 
