@@ -33,6 +33,15 @@ class AuditSite(BaseModel):
         default_factory=lambda: ["en-GB"],
         description="BCP-47 locale codes the site serves.",
     )
+    disavow_domains: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Owner-supplied disavow file: domains the owner has disavowed in "
+            "Google Search Console. Google exposes no read API for the disavow "
+            "list, so this is the only path to measure P3-30. Leave empty when "
+            "no disavow file has been submitted (P3-30 then reports N/A)."
+        ),
+    )
 
     @field_validator("primary_url")
     @classmethod

@@ -196,6 +196,9 @@ class SiteData:
     backlinks_timeseries: list[dict] = field(default_factory=list)  # Monthly profile snapshots over a 12-month window
     wikipedia_links: dict | None = None  # Wikipedia search results for brand name (for P3-28)
     bulk_pages_backlinks: list[dict] = field(default_factory=list)  # Per-URL rank + backlink count from /backlinks/bulk_pages_summary (P3-10)
+    backlinks_links: list[dict] = field(default_factory=list)  # Per-backlink records from /backlinks/backlinks (url_from, anchor, text_pre/post, semantic_location), feeds P3-20, P3-27
+    referrer_pages: dict[str, "FetchedHtml"] = field(default_factory=dict)  # Crawled referrer HTML keyed by url_from (top-N referring pages), feeds P3-20 (link position), P3-27 (full-body co-occurrence)
+    owner_disavow_domains: list[str] = field(default_factory=list)  # Owner-supplied disavow file domains (config audit.site.disavow_domains), feeds P3-30
 
     @property
     def successful_audits(self) -> list[PageAudit]:

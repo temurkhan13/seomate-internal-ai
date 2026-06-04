@@ -22,6 +22,7 @@ batch is verified against pixelettetech.com before more land.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -38,10 +39,83 @@ from seomate.data_contract import (
     SubjectType,
 )
 from seomate.pillars._base import SiteData, register_extractor
+from seomate.utils.text_extraction import extract_main_text
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# ─── Referrer-crawl helpers (P3-20 link position, P3-27 co-occurrence) ───────
+
+# Common English stopwords + generic web terms excluded from the topic
+# vocabulary so co-occurrence keys on meaningful subject terms, not filler.
+_TOPIC_STOPWORDS = frozenset(
+    {
+        "the", "and", "for", "are", "with", "you", "your", "this", "that", "from",
+        "have", "has", "was", "will", "can", "all", "our", "out", "how", "what",
+        "why", "who", "best", "top", "more", "get", "new", "use", "using", "about",
+        "into", "their", "they", "them", "but", "not", "any", "may", "one", "two",
+        "https", "http", "www", "com", "org", "net", "html", "page", "home", "site",
+        "website", "click", "here", "read", "learn", "online", "free", "services",
+        "service", "company", "solutions", "solution", "business",
+    }
+)
+
+
+def _topic_terms(site: SiteData, *, limit: int = 60) -> set[str]:
+    """Build a topical vocabulary for the site from its ranked keywords.
+
+    Tokenises the keywords the site already ranks for (the most reliable
+    machine-readable description of what the site is *about*) into
+    significant terms (len >= 4, alphabetic, not a stopword). Used to test
+    whether a referring page discusses the site's topics alongside the brand.
+    """
+    terms: set[str] = set()
+    for item in (site.ranked_keywords or [])[: limit * 3]:
+        if not isinstance(item, dict):
+            continue
+        kw = item.get("keyword")
+        if not kw:
+            kd = item.get("keyword_data")
+            if isinstance(kd, dict):
+                kw = kd.get("keyword") or (kd.get("keyword_info") or {}).get("keyword")
+        if not isinstance(kw, str):
+            continue
+        for tok in re.findall(r"[a-z]{4,}", kw.lower()):
+            if tok not in _TOPIC_STOPWORDS:
+                terms.add(tok)
+        if len(terms) >= limit:
+            break
+    return terms
+
+
+def _referrer_context(site: SiteData, link: dict) -> tuple[str, str]:
+    """Return (context_text_lowercased, source) for one backlink.
+
+    Prefers the crawled referrer page's main-content text; falls back to the
+    DataForSEO text_pre / anchor / text_post snippet when the page could not
+    be fetched. Source is 'crawl', 'snippet', or 'none'.
+    """
+    url_from = link.get("url_from")
+    page = site.referrer_pages.get(url_from) if url_from else None
+    if page is not None and page.fetch_error is None and page.status_code < 400 and page.html:
+        body = extract_main_text(page.html, url=page.url).main_text
+        if body and body.strip():
+            return body.lower(), "crawl"
+    snippet = " ".join(
+        str(link.get(k) or "") for k in ("text_pre", "anchor", "text_post")
+    ).strip()
+    if snippet:
+        return snippet.lower(), "snippet"
+    return "", "none"
+
+
+def _safe_int(v: Any) -> int | None:
+    try:
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _build_record(
@@ -2694,43 +2768,129 @@ async def capture_p3_20(
     ctx: AdapterContext,
     site: SiteData,
 ) -> CaptureRecord:
-    """P3-20 — Link location in content (Probable, partial measurement).
+    """P3-20: Link location in content (Probable).
 
-    The variable wants per-link position WITHIN the page body — above
-    the fold vs mid-content vs below the fold. That position-precision
-    requires rendering each linking page in a browser-equivalent
-    environment, which is operationally prohibitive at backlink scale.
+    Where our inbound link sits within the referring page's main content:
+    earlier placement (top of article) carries more editorial weight than a
+    link buried at the bottom (Backlinko factor #107). The taxonomy defines
+    position as the link's character offset within the main content divided
+    by total content length (0 = top, 1 = bottom), a DOM text measure, not
+    a pixel fold, so no browser render is needed.
 
-    What DataForSEO does expose is HTML5 semantic location
-    (``article``/``section``/``main``/``figure`` vs ``nav``/``aside``/
-    ``footer``/``header``). That signal is already operationalised by
-    **P3-19 — Contextual links** with multi-rule evaluation.
+    Method: for each crawled referring page, locate our anchor text within
+    the extracted main content and record its relative position, bucketed
+    top (<0.33) / middle / bottom (>=0.66).
 
-    We mark P3-20 as UNMEASURABLE here so the SEO exec doc surfaces
-    the limitation explicitly. The redirect points readers to P3-19
-    for the available data.
+    Pass: of the links we could locate, >= 50% sit in the top half
+    (position <= 0.5). Coverage is reported honestly: many referrer pages
+    are unfetchable (403 / JS-rendered / dead) or use naked-URL anchors that
+    cannot be located as text.
     """
     captured_at = _now()
+    links = site.backlinks_links
+    if not links:
+        return _build_record(
+            ctx=ctx, site=site, variable_id="P3-20", captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={"reason": "no per-backlink data (backlinks_links empty: the /backlinks call failed or the subscription is off)"},
+            rules=None, evidence_weight=EvidenceWeight.PROBABLE,
+            data_sources=["backlinks.backlinks"], errors=["no backlinks_links"],
+        )
+
+    positions: list[float] = []
+    examples: list[dict[str, Any]] = []
+    pages_crawled = 0
+    for link in links:
+        url_from = link.get("url_from")
+        page = site.referrer_pages.get(url_from) if url_from else None
+        if (
+            page is None
+            or page.fetch_error is not None
+            or page.status_code >= 400
+            or not page.html
+        ):
+            continue
+        pages_crawled += 1
+        body = extract_main_text(page.html, url=page.url).main_text
+        if not body:
+            continue
+        anchor = (link.get("anchor") or "").strip()
+        if len(anchor) < 3:
+            continue  # naked-URL / empty anchors can't be located as text
+        idx = body.lower().find(anchor.lower())
+        if idx < 0:
+            continue
+        pos = round(idx / max(len(body), 1), 3)
+        positions.append(pos)
+        if len(examples) < 10:
+            examples.append(
+                {"url_from": url_from, "anchor": anchor[:40], "position": pos}
+            )
+
+    located = len(positions)
+    if located == 0:
+        return _build_record(
+            ctx=ctx, site=site, variable_id="P3-20", captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={
+                "reason": (
+                    "could not locate our link within the main content of any "
+                    "crawled referring page (pages unfetchable / JS-rendered, or "
+                    "naked-URL anchors not present as text). Semantic location is "
+                    "captured at P3-19."
+                ),
+                "referrer_pages_crawled": pages_crawled,
+                "see_also": "P3-19",
+            },
+            rules=None, evidence_weight=EvidenceWeight.PROBABLE,
+            data_sources=["backlinks.backlinks"], errors=["no link located in content"],
+        )
+
+    top = sum(1 for p in positions if p < 0.33)
+    middle = sum(1 for p in positions if 0.33 <= p < 0.66)
+    bottom = sum(1 for p in positions if p >= 0.66)
+    top_half = sum(1 for p in positions if p <= 0.5)
+    top_half_pct = round(top_half / located * 100, 1)
+    median_pos = round(sorted(positions)[located // 2], 3)
+
+    rule_1 = RuleResult(
+        rule_id=1,
+        rule_text=(
+            ">= 50% of located in-content links sit in the top half of the "
+            "content (position <= 0.5)"
+        ),
+        passed=top_half_pct >= 50,
+        evidence={"top_half_pct": top_half_pct, "links_located": located},
+    )
+
+    if located < 5:
+        status = CaptureStatus.PARTIAL  # too few located to be confident
+    else:
+        status = CaptureStatus.PASSED if rule_1.passed else CaptureStatus.FAILED
+
     return _build_record(
-        ctx=ctx,
-        site=site,
-        variable_id="P3-20",
-        captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        ctx=ctx, site=site, variable_id="P3-20", captured_at=captured_at,
+        status=status,
         value={
-            "reason": (
-                "per-link above-fold / below-fold position requires "
-                "rendering each linking page; not feasible at backlink "
-                "scale. Semantic location (article/main vs nav/footer) "
-                "is captured at P3-19 — Contextual links."
+            "links_located": located,
+            "referrer_pages_crawled": pages_crawled,
+            "median_position": median_pos,
+            "distribution": {
+                "top_0_33": top, "middle_33_66": middle, "bottom_66_100": bottom,
+            },
+            "top_half_pct": top_half_pct,
+            "examples": examples,
+            "note": (
+                "Position = character offset of our anchor within the referring "
+                "page's main content / total content length (0=top, 1=bottom). "
+                "Measured on the fetchable subset of referring pages; naked-URL "
+                "anchors and unfetchable pages are excluded. PARTIAL when fewer "
+                "than 5 links could be located."
             ),
-            "see_also": "P3-19",
-            "approximation_available_at": "P3-19",
         },
-        rules=None,
+        rules=[rule_1],
         evidence_weight=EvidenceWeight.PROBABLE,
-        data_sources=[],
-        errors=["position requires browser render"],
+        data_sources=["backlinks.backlinks"],
     )
 
 
@@ -2742,45 +2902,106 @@ async def capture_p3_30(
     ctx: AdapterContext,
     site: SiteData,
 ) -> CaptureRecord:
-    """P3-30 — Disavow tool usage (Consensus, owner-only).
+    """P3-30: Disavow tool usage (Consensus, owner-attested).
 
-    Google's disavow file is uploaded to and read from Google Search
-    Console. The disavow list itself is visible only to verified
-    property owners — there is no public API and no third-party
-    measurement path. SEOMATE runs as an external auditor; it has no
-    GSC access.
+    Google's disavow list is upload-only (no read API), and absent from the
+    Search Console API even for verified owners (confirmed against this
+    property's full owner OAuth). Per the taxonomy the data source is
+    therefore site-owner attestation: the owner supplies their active
+    disavow file via config (``audit.site.disavow_domains``).
 
-    Marked UNMEASURABLE with explicit owner-data remediation. When a
-    later platform phase adds optional GSC integration, this extractor
-    will be rewritten to parse the disavow file directly.
+    - **No disavow file supplied -> NOT_APPLICABLE.** For a clean profile
+      this is the truthful state: no toxic-link problem means no disavow is
+      needed. P3-29 (toxic backlink presence) is the source of truth for
+      whether one is warranted.
+    - **Disavow file supplied -> graded.** A submitted disavow is a positive
+      remediation signal; we also cross-check it covers the high-spam
+      referring domains P3-29 currently flags.
     """
     captured_at = _now()
+    disavow = [
+        d.strip().lower()
+        for d in (site.owner_disavow_domains or [])
+        if d and d.strip()
+    ]
+
+    if not disavow:
+        summary = site.backlinks_summary or {}
+        return _build_record(
+            ctx=ctx,
+            site=site,
+            variable_id="P3-30",
+            captured_at=captured_at,
+            status=CaptureStatus.NOT_APPLICABLE,
+            value={
+                "reason": (
+                    "No disavow file supplied. Google exposes no read API for the "
+                    "disavow list (upload-only, absent from the Search Console API "
+                    "even for verified owners), so this variable is owner-attested. "
+                    "For a clean link profile no disavow is needed, so N/A is the "
+                    "accurate state rather than a measurement gap."
+                ),
+                "profile_spam_score": summary.get("backlinks_spam_score"),
+                "owner_input_path": "audit.site.disavow_domains",
+                "source_of_truth_for_need": "P3-29 (toxic backlink presence)",
+            },
+            rules=None,
+            evidence_weight=EvidenceWeight.CONSENSUS,
+            data_sources=[],
+        )
+
+    # Owner supplied a disavow file -> grade it.
+    disavow_set = set(disavow)
+    refs = site.referring_domains or []
+    toxic = {
+        (r.get("domain") or "").lower()
+        for r in refs
+        if (_safe_int(r.get("backlinks_spam_score")) or 0) >= 60
+        and r.get("domain")
+    }
+    toxic_covered = sorted(toxic & disavow_set)
+    toxic_uncovered = sorted(toxic - disavow_set)
+
+    rule_1 = RuleResult(
+        rule_id=1,
+        rule_text="A disavow file has been submitted (owner-attested)",
+        passed=True,
+        evidence={"disavow_domain_count": len(disavow_set)},
+    )
+    rule_2 = RuleResult(
+        rule_id=2,
+        rule_text=(
+            "Disavow file covers the high-spam (>=60) referring domains in the "
+            "current sample"
+        ),
+        passed=len(toxic_uncovered) == 0,
+        evidence={
+            "toxic_in_sample": len(toxic),
+            "toxic_covered": len(toxic_covered),
+            "toxic_uncovered": toxic_uncovered[:20],
+        },
+    )
+    overall = rule_1.passed and rule_2.passed
     return _build_record(
         ctx=ctx,
         site=site,
         variable_id="P3-30",
         captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        status=CaptureStatus.PASSED if overall else CaptureStatus.FAILED,
         value={
-            "reason": (
-                "The Google disavow tool has NO read API — not public, and not "
-                "in the Search Console API even for verified owners. It is "
-                "upload-only. We confirmed full owner OAuth on this property "
-                "(siteFullUser), and it still exposes no endpoint that returns "
-                "the active disavow list. So this cannot be measured by any "
-                "automated path, regardless of access."
+            "disavow_domain_count": len(disavow_set),
+            "toxic_in_sample": len(toxic),
+            "toxic_covered_by_disavow": toxic_covered,
+            "toxic_uncovered_by_disavow": toxic_uncovered,
+            "note": (
+                "Disavow file supplied by the site owner via config. A submitted "
+                "disavow is a positive remediation signal; rule 2 flags any "
+                "currently-sampled high-spam referring domain not yet in the file."
             ),
-            "remediation": (
-                "The ONLY way to populate this is for the site owner to manually "
-                "export their active disavow file and upload it as supplementary "
-                "audit input. GSC OAuth (which we have) does not help here."
-            ),
-            "related": ["P3-29 — Toxic backlink presence (the disavow source-of-truth)"],
         },
-        rules=None,
+        rules=[rule_1, rule_2],
         evidence_weight=EvidenceWeight.CONSENSUS,
-        data_sources=[],
-        errors=["owner-only access"],
+        data_sources=["owner.disavow", "backlinks.referring_domains"],
     )
 
 
@@ -4160,50 +4381,117 @@ async def capture_p3_27(
     ctx: AdapterContext,
     site: SiteData,
 ) -> CaptureRecord:
-    """P3-27 — Co-occurrences (Probable, requires referrer-page crawl).
+    """P3-27: Co-occurrences (brand + topic mentions) (Probable).
 
-    The variable measures whether the brand name and the site's
-    topic-keywords appear together in the body text of referring
-    pages — a strong contextual signal (the page treats the brand as
-    a genuine topical reference, not just a footer logo link).
+    Whether the brand name appears alongside the site's topical terms in the
+    content of referring pages, a contextual signal that the brand is
+    treated as a genuine topical reference, not just a footer logo link.
 
-    Detecting this requires fetching and parsing the body text of
-    each referring page. Our current audit fetches the audited site's
-    own pages plus DataForSEO's aggregate backlink data, but it does
-    NOT crawl referrer pages. Adding a 50-page external scrape pass
-    would add ~30s + bandwidth cost; deferred until the platform
-    decides whether to enable it as an optional deep-audit mode.
+    Method: for each backlink, take the referring page's main content (when
+    crawled) or, when the page is unfetchable, the DataForSEO
+    text_pre/anchor/text_post snippet. Test whether the context contains a
+    brand-name mention (as text) AND at least one of the site's topic terms
+    (derived from the keywords the site ranks for). Co-occurrence rate is the
+    share of analysed referrer contexts where both appear.
+
+    Pass: brand + topic co-occur in >= 25% of analysed referrer contexts.
     """
     captured_at = _now()
+    links = site.backlinks_links
+    if not links:
+        return _build_record(
+            ctx=ctx, site=site, variable_id="P3-27", captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={"reason": "no per-backlink data (backlinks_links empty: the /backlinks call failed or the subscription is off)"},
+            rules=None, evidence_weight=EvidenceWeight.PROBABLE,
+            data_sources=["backlinks.backlinks"], errors=["no backlinks_links"],
+        )
+
+    brand_variants = tuple(
+        v.lower() for v in (site.brand.all_variants if site.brand else ()) if v
+    )
+    topics = _topic_terms(site)
+    if not brand_variants or not topics:
+        return _build_record(
+            ctx=ctx, site=site, variable_id="P3-27", captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={"reason": (
+                "cannot test co-occurrence without both a brand vocabulary and a "
+                "topic vocabulary (no ranked keywords to derive topics from)."
+            )},
+            rules=None, evidence_weight=EvidenceWeight.PROBABLE,
+            data_sources=["backlinks.backlinks"], errors=["no brand or topic vocabulary"],
+        )
+
+    analysed = crawl_n = snippet_n = brand_n = topic_n = cooccur_n = 0
+    examples: list[dict[str, Any]] = []
+    for link in links:
+        ctx_text, source = _referrer_context(site, link)
+        if not ctx_text or source == "none":
+            continue
+        analysed += 1
+        if source == "crawl":
+            crawl_n += 1
+        else:
+            snippet_n += 1
+        has_brand = any(b in ctx_text for b in brand_variants)
+        topic_hits = [t for t in topics if t in ctx_text]
+        if has_brand:
+            brand_n += 1
+        if topic_hits:
+            topic_n += 1
+        if has_brand and topic_hits:
+            cooccur_n += 1
+            if len(examples) < 8:
+                examples.append({
+                    "url_from": link.get("url_from"),
+                    "source": source,
+                    "topics_found": topic_hits[:5],
+                })
+
+    if analysed == 0:
+        return _build_record(
+            ctx=ctx, site=site, variable_id="P3-27", captured_at=captured_at,
+            status=CaptureStatus.UNMEASURABLE,
+            value={"reason": "no analysable referrer context (no crawled bodies and no text snippets)"},
+            rules=None, evidence_weight=EvidenceWeight.PROBABLE,
+            data_sources=["backlinks.backlinks"], errors=["no referrer context"],
+        )
+
+    cooccur_pct = round(cooccur_n / analysed * 100, 1)
+    rule_1 = RuleResult(
+        rule_id=1,
+        rule_text="Brand + topic co-occur in >= 25% of analysed referring contexts",
+        passed=cooccur_pct >= 25,
+        evidence={
+            "cooccurrence_pct": cooccur_pct,
+            "cooccurrence_count": cooccur_n,
+            "contexts_analysed": analysed,
+        },
+    )
     return _build_record(
-        ctx=ctx,
-        site=site,
-        variable_id="P3-27",
-        captured_at=captured_at,
-        status=CaptureStatus.UNMEASURABLE,
+        ctx=ctx, site=site, variable_id="P3-27", captured_at=captured_at,
+        status=CaptureStatus.PASSED if rule_1.passed else CaptureStatus.FAILED,
         value={
-            "reason": (
-                "co-occurrence detection requires crawling referring "
-                "pages' body text. SEOMATE's H1 backlinks pillar reads "
-                "DataForSEO aggregate data only; no referrer-page "
-                "scrape pass is performed."
-            ),
-            "remediation": (
-                "to populate this variable, add an optional referrer-crawl "
-                "stage that fetches the top-N referring URLs (from the "
-                "DataForSEO /backlinks endpoint) and runs brand + topic "
-                "keyword presence detection on each page's body. ~50 "
-                "fetches per audit, +30-60s wall time, ~negligible cost."
-            ),
-            "approximation_available_at": (
-                "partial signal via P3-12 (anchor distribution — branded "
-                "anchors imply contextual brand mention) and P3-21 "
-                "(linking domain topical relevance — relevant domains "
-                "are more likely to co-occur brand + topic)"
+            "contexts_analysed": analysed,
+            "from_crawled_pages": crawl_n,
+            "from_snippets": snippet_n,
+            "brand_mention_count": brand_n,
+            "topic_present_count": topic_n,
+            "cooccurrence_count": cooccur_n,
+            "cooccurrence_pct": cooccur_pct,
+            "topic_terms_sample": sorted(topics)[:30],
+            "examples": examples,
+            "note": (
+                "Context = the referring page's crawled main content where "
+                "fetchable, else the DataForSEO text_pre/anchor/text_post "
+                "snippet. Co-occurrence = a brand-name mention (as text) and at "
+                "least one topic term (from the site's ranked keywords) in the "
+                "same context. Snippet-sourced contexts are a narrower window than "
+                "full-page bodies."
             ),
         },
-        rules=None,
+        rules=[rule_1],
         evidence_weight=EvidenceWeight.PROBABLE,
-        data_sources=[],
-        errors=["requires referrer-page crawl"],
+        data_sources=["backlinks.backlinks"],
     )

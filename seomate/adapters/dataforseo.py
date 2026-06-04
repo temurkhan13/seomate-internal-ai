@@ -384,6 +384,48 @@ class DataForSEOAdapter(BaseAdapter):
 
     @rate_limited
     @retry_transient()
+    @tracked("backlinks.backlinks", cost_calculator=_cost_from_dfs_response)
+    async def backlinks_links(
+        self,
+        target: str,
+        *,
+        limit: int = 150,
+        mode: str = "one_per_domain",
+        order_by: str = "page_from_rank,desc",
+        include_subdomains: bool = True,
+        backlinks_status_type: str = "live",
+    ) -> dict:
+        """Individual backlink records for the target (one per domain by default).
+
+        Each row carries the referring page URL (``url_from``), the
+        ``anchor``, the text immediately before/after the anchor
+        (``text_pre`` / ``text_post``, a snippet of the referrer's body),
+        ``semantic_location``, ``dofollow``, ``page_from_rank``, and
+        ``domain_from``. ``mode='one_per_domain'`` returns one
+        representative link per referring domain: ideal for sampling
+        diverse referrer pages to crawl (P3-20 link position, P3-27
+        brand+topic co-occurrence).
+
+        Cost: ~$0.02 per call from the Backlinks subscription.
+        """
+        body = [
+            {
+                "target": target,
+                "limit": limit,
+                "mode": mode,
+                "order_by": [order_by],
+                "include_subdomains": include_subdomains,
+                "backlinks_status_type": backlinks_status_type,
+            }
+        ]
+        response = await self.client.post(
+            "/v3/backlinks/backlinks/live", json=body
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @rate_limited
+    @retry_transient()
     @tracked("backlinks.bulk_pages_summary", cost_calculator=_cost_from_dfs_response)
     async def bulk_pages_summary(
         self,

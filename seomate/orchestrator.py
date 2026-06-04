@@ -62,7 +62,7 @@ from seomate.pillars import (
 from seomate.storage import AdapterCall, Audit, Capture, session_scope
 from seomate.taxonomy import Catalog
 from seomate.utils.cost_tracker import CostCapExceeded, CostTracker
-from seomate.utils.html_fetch import fetch_html_pages
+from seomate.utils.html_fetch import FetchedHtml, fetch_html_pages
 from seomate.utils.link_graph import build_link_graph
 from seomate.utils.llm_evaluation import (
     BrandHallucinationEvaluator,
@@ -320,6 +320,8 @@ class AuditOrchestrator:
             bulk_pages_backlinks = await self._prefetch_bulk_pages_summary(
                 dataforseo, urls
             )
+            backlinks_links = await self._prefetch_backlinks_links(dataforseo)
+            referrer_pages = await self._crawl_referrer_pages(backlinks_links)
             html_pages = await fetch_html_pages(urls)
             structured = {
                 url: parse_structured_data(html.html, url=html.url)
@@ -388,6 +390,9 @@ class AuditOrchestrator:
                 backlinks_anchors=backlinks_anchors,
                 backlinks_timeseries=backlinks_timeseries,
                 bulk_pages_backlinks=bulk_pages_backlinks,
+                backlinks_links=backlinks_links,
+                referrer_pages=referrer_pages,
+                owner_disavow_domains=list(self.config.audit.site.disavow_domains),
                 psi_results=psi_results,
                 psi_configured=psi.is_configured,
                 llm_configured=llm.is_configured,
@@ -805,6 +810,84 @@ class AuditOrchestrator:
         except Exception:  # noqa: BLE001
             self._log.exception("audit.bulk_pages_summary_failed")
             return []
+
+    async def _prefetch_backlinks_links(
+        self,
+        dataforseo: DataForSEOAdapter,
+        *,
+        limit: int = 150,
+    ) -> list[dict]:
+        """Per-backlink records (one per referring domain) for the audited site.
+
+        Returns up to ``limit`` backlink rows carrying ``url_from``,
+        ``anchor``, ``text_pre``/``text_post`` (a snippet of the referrer's
+        body around the link), and ``semantic_location``. Feeds P3-20 (link
+        position) and P3-27 (brand+topic co-occurrence). Empty on failure,
+        so the extractors degrade gracefully.
+        """
+        target = self.config.audit.site.domain
+        try:
+            resp = await dataforseo.backlinks_links(target, limit=limit)
+            result = (resp.get("tasks") or [{}])[0].get("result") or []
+            items: list[dict] = []
+            if result and isinstance(result[0], dict):
+                items = result[0].get("items") or []
+            self._log.info(
+                "audit.backlinks_links_prefetch_complete", links_returned=len(items)
+            )
+            return items
+        except Exception:  # noqa: BLE001
+            self._log.exception("audit.backlinks_links_failed")
+            return []
+
+    async def _crawl_referrer_pages(
+        self,
+        backlinks_links: list[dict],
+        *,
+        max_pages: int = 60,
+        timeout_seconds: float = 12.0,
+    ) -> dict[str, FetchedHtml]:
+        """Fetch a bounded, diverse sample of referring pages for body analysis.
+
+        Picks one URL per referring domain (dofollow + higher
+        ``page_from_rank`` first), capped at ``max_pages``, and fetches them
+        concurrently with a short timeout. Fetch failures are data
+        (``FetchedHtml.fetch_error``), not fatal. Feeds P3-20 (locate our
+        link's position within the page) and P3-27 (full-body brand+topic
+        co-occurrence). Returns ``{}`` when there are no links.
+        """
+        if not backlinks_links:
+            return {}
+        seen: set[str] = set()
+        urls: list[str] = []
+        for link in sorted(
+            backlinks_links,
+            key=lambda x: (not bool(x.get("dofollow")), -(x.get("page_from_rank") or 0)),
+        ):
+            url = link.get("url_from")
+            dom = (link.get("domain_from") or "").lower()
+            if not url or not isinstance(url, str) or not url.startswith(
+                ("http://", "https://")
+            ):
+                continue
+            if dom and dom in seen:
+                continue
+            seen.add(dom)
+            urls.append(url)
+            if len(urls) >= max_pages:
+                break
+        if not urls:
+            return {}
+        pages = await fetch_html_pages(
+            urls, concurrency=8, timeout_seconds=timeout_seconds
+        )
+        ok = sum(
+            1 for p in pages.values() if p.fetch_error is None and p.status_code < 400
+        )
+        self._log.info(
+            "audit.referrer_crawl_complete", requested=len(urls), fetched_ok=ok
+        )
+        return pages
 
     async def _prefetch_business_reviews(
         self,
