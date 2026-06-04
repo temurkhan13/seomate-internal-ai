@@ -139,7 +139,11 @@ def _brand_info(domain: str) -> dict[str, Any]:
     parts = [p for p in re.split(r"[^a-z0-9]+", root_raw) if p]
     alpha = re.sub(r"[^a-z0-9]", "", root_raw)
     tokens = set(parts)
-    if alpha:
+    # Only treat the joined form as a brand token when it's distinctive (>= 5
+    # chars). Otherwise a hyphenated brand like "n-ix" collapses to "nix", which
+    # collides with real entities (the Nix package manager) and the keyword
+    # filters. Brand-keyword stripping still works off the individual parts.
+    if alpha and len(alpha) >= 5:
         tokens.add(alpha)
     return {"tokens": tokens, "root": alpha}
 
