@@ -168,10 +168,19 @@ def _is_brand_kw(keyword: str, brand: dict[str, Any]) -> bool:
 
 
 def _commercial(kw: dict[str, Any]) -> bool:
-    """A money keyword: it has CPC, or buyer-stage search intent."""
-    if (kw.get("cpc") or 0) > 0:
-        return True
-    return (kw.get("intent") or "") in _COMMERCIAL_INTENT
+    """A money keyword: buyer-stage search intent.
+
+    Intent-first, not CPC-first, on purpose. Other companies' brand names
+    ("opentext", "globant", "icabbi") and generic informational heads
+    ("methodologies", "programming languages") all carry a CPC, so a CPC>0 test
+    waved them through as "money keywords". DataForSEO labels them
+    informational/navigational, which is what we filter on. CPC is only a
+    fallback when intent is missing from the row.
+    """
+    intent = kw.get("intent")
+    if intent:
+        return intent in _COMMERCIAL_INTENT
+    return (kw.get("cpc") or 0) > 0
 
 
 # Giant aggregators / platforms / directories that rank for everything , they
@@ -294,6 +303,32 @@ def _site_offerings(html: str | None) -> list[str]:
 
 def _has_structured_data(html: str | None) -> bool:
     return bool(re.search(r"application/ld\+json", html or "", re.I))
+
+
+def _brand_query_from_html(html: str | None, fallback: str) -> str:
+    """The real brand name from the homepage <title>, for entity lookup.
+
+    Querying the Knowledge Graph with a domain token ("nix", "pixelettetech")
+    rarely matches the company; the title's brand segment ("N-iX", "Pixelette
+    Technologies", "Itransition") does. Picks the shortest title segment, which
+    is almost always the brand rather than the tagline.
+    """
+    if not html:
+        return fallback
+    try:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, "html.parser")
+        if soup.title and soup.title.get_text(strip=True):
+            title = soup.title.get_text(" ", strip=True)
+            parts = [p.strip() for p in re.split(r"[|\-–—:·•]", title) if p.strip()]
+            if parts:
+                cand = min(parts, key=len)
+                if 3 <= len(cand) <= 40 and len(cand.split()) <= 5:
+                    return cand
+    except Exception:  # noqa: BLE001
+        pass
+    return fallback
 
 
 # --------------------------------------------------------------------------- #
@@ -481,9 +516,11 @@ def _self_audit(
     ranked: list[dict[str, Any]] = []
     off_profile: list[dict[str, Any]] = []
     money_owned = 0
+    page1 = 0
     for k, d in sorted(our.items(), key=lambda kv: kv[1]["volume"], reverse=True):
         b = _is_brand_kw(k, brand)
         c = _commercial(d)
+        p = _pos(d["position"])
         row = {
             "keyword": k,
             "volume": d["volume"],
@@ -494,8 +531,14 @@ def _self_audit(
             "commercial": c,
         }
         ranked.append(row)
-        if c and not b:
-            money_owned += 1
+        # "Owned" means it actually works: a commercial keyword ranking on page 1.
+        # A commercial term sitting at position 80 drives nothing, so it does not
+        # count , that's the honest self-gap (0 page-1 money keywords for a site
+        # whose whole footprint is page 5+).
+        if p <= 10:
+            page1 += 1
+            if c and not b:
+                money_owned += 1
         # Brand-adjacent but non-commercial == ranking for the wrong thing
         # (the "<brand> photography" case): you own it, but it sells nothing.
         if b and not c and len(k.split()) >= 2:
@@ -503,6 +546,7 @@ def _self_audit(
     return {
         "total_ranked": len(our),
         "money_keywords_owned": money_owned,
+        "page1_keywords": page1,
         "branded": sum(1 for r in ranked if r["branded"]),
         "informational": sum(1 for r in ranked if not r["commercial"]),
         "ranked_keywords": ranked[:40],
@@ -687,7 +731,8 @@ async def run_competitive(
         if getattr(kg, "is_configured", False):
             for d in domains:
                 brand = _brand_info(d)
-                query = (brand["tokens"] and max(brand["tokens"], key=len)) or d
+                fallback = (brand["tokens"] and max(brand["tokens"], key=len)) or d
+                query = _brand_query_from_html(html_for[d], fallback)
                 try:
                     hits = await kg.search(query, limit=5)
                     entity_for[d] = _match_entity(hits, brand, d)
