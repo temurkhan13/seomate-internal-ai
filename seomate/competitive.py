@@ -19,8 +19,10 @@ from typing import Any
 from uuid import uuid4
 
 from seomate.adapters import AdapterContext, DataForSEOAdapter
+from seomate.adapters.llm import LlmAdapter
 from seomate.utils.cost_tracker import CostTracker
 from seomate.utils.html_fetch import fetch_html_pages
+from seomate.utils.text_extraction import extract_main_text
 
 UK_LOCATION = 2826
 _BIG = 10**6  # sentinel for "not ranking" when comparing positions
@@ -217,6 +219,58 @@ def _service_queries_from_html(html: str, target: str) -> list[str]:
     return out
 
 
+async def _llm_service_queries(html: str, target: str) -> list[str]:
+    """Semantic service extraction , ask the LLM what the business does, from its
+    homepage title + meta + main text, and return competitor-search queries.
+
+    Robust to marketing-copy homepages where headings are taglines ("engineering
+    the future") rather than service names: the deterministic heading scrape
+    cannot read those, but the LLM can. Returns [] when the LLM is not configured
+    or the call fails, so the caller falls back to the heuristic extractor.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    title = soup.title.get_text(" ", strip=True) if soup.title else ""
+    md = soup.find("meta", attrs={"name": "description"})
+    meta = (md.get("content") or "") if md else ""
+    body = extract_main_text(html, url=f"https://{target}/").main_text[:2500]
+    content = f"TITLE: {title}\nMETA: {meta}\nCONTENT: {body}".strip()
+    if not content:
+        return []
+    system = (
+        "You identify a company's core services from its homepage so we can find "
+        "its real competitors. Reply with ONLY a JSON array, nothing else."
+    )
+    user = (
+        f"Homepage of {target}:\n\n{content}\n\n"
+        'Return a JSON array of 4 to 6 objects, each {"query": "..."}, where each '
+        "query is a short Google search a prospective CLIENT would type to find a "
+        "company offering this company's core services. Name a concrete service "
+        'plus a business word, e.g. {"query": "blockchain development company"}, '
+        '{"query": "mobile app development agency"}. Use the company\'s actual '
+        "services. Do NOT include the company's own brand name. Return ONLY the "
+        "JSON array."
+    )
+    try:
+        async with LlmAdapter(_ctx()) as llm:
+            if not llm.is_configured:
+                return []
+            res = await llm.batch_evaluate(
+                system_prompt=system, user_prompt=user, max_tokens=400
+            )
+    except Exception:  # noqa: BLE001 - LLM is best-effort; fall back on any error
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in res.parsed or []:
+        q = str(item.get("query") or "").strip().lower()
+        if q and 2 <= len(q.split()) <= 8 and q not in seen:
+            seen.add(q)
+            out.append(q)
+    return out
+
+
 async def _discover_competitors(
     dfs: DataForSEOAdapter,
     target: str,
@@ -238,19 +292,30 @@ async def _discover_competitors(
     read (e.g. a JS-only shell). Returns ``(competitors, discovery_method)``.
     """
     queries: list[str] = []
-    method = "content_services"
+    method = "content_services_llm"
+    html = ""
     try:
         primary = f"https://{target}/"
         pages = await fetch_html_pages([primary], concurrency=2, timeout_seconds=15)
         page = pages.get(primary)
         if page and page.fetch_error is None and page.status_code < 400 and page.html:
-            queries = _service_queries_from_html(page.html, target)[:max_queries]
+            html = page.html
     except Exception:  # noqa: BLE001 - discovery must never crash the run
-        queries = []
+        html = ""
+
+    if html:
+        # Semantic extraction first , handles marketing-copy homepages whose
+        # headings are taglines ("engineering the future"), not service names.
+        queries = (await _llm_service_queries(html, target))[:max_queries]
+        if not queries:
+            # Deterministic title/heading extraction (works when headings ARE
+            # service names; weak on tagline homepages, but needs no LLM key).
+            method = "content_services_heuristic"
+            queries = _service_queries_from_html(html, target)[:max_queries]
 
     if not queries:
-        # Fallback: the site's own ranked keywords. Weak for low-footprint sites
-        # (this is what surfaced giants like sciencedirect/atlassian before).
+        # Last fallback: the site's own ranked keywords. Weak for low-footprint
+        # sites (this is what surfaced giants like sciencedirect before).
         method = "ranked_keywords_fallback"
         try:
             rk = await dfs.ranked_keywords(
