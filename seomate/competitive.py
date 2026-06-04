@@ -576,6 +576,43 @@ def _self_audit(
 # --------------------------------------------------------------------------- #
 # Competitor discovery (deterministic fallback when none supplied)
 # --------------------------------------------------------------------------- #
+async def _discover_competitors_from_keywords(
+    dfs: DataForSEOAdapter,
+    target: str,
+    keywords: list[str],
+    *,
+    location_code: int,
+    language_code: str,
+    top_n: int = 5,
+    depth: int = 12,
+) -> list[str]:
+    """The RIGHT way to find competitors: who ranks for the focus keywords.
+
+    SERP each of the business's PRIORITY keywords (the strategic focus it wants
+    to rank for, e.g. its AI and blockchain heads) and return the domains that
+    recur across them, minus aggregators and the target. This answers "who
+    competes for what we want to win", not "who happens to match our homepage
+    tagline" (the weak content-based fallback) , so it surfaces the real
+    specialists instead of generalists.
+
+    The focus keywords are the one genuinely strategic input; a session or the
+    user supplies them. SERPing them is fully deterministic.
+    """
+    freq: Counter[str] = Counter()
+    for kw in [k for k in keywords if k][:12]:
+        try:
+            serp = await dfs.serp_google_organic(
+                kw, location_code=location_code, language_code=language_code, depth=depth
+            )
+        except Exception:  # noqa: BLE001 - one bad SERP shouldn't sink discovery
+            continue
+        for d in set(_serp_domains(serp)):
+            if d == target or _is_denied(d):
+                continue
+            freq[d] += 1
+    return [d for d, _ in freq.most_common(top_n)]
+
+
 async def _discover_competitors(
     dfs: DataForSEOAdapter,
     target: str,
@@ -642,6 +679,7 @@ async def run_competitive(
     target: str,
     competitors: list[str] | None = None,
     *,
+    seed_keywords: list[str] | None = None,
     location_code: int = UK_LOCATION,
     language_code: str = "en",
     keyword_limit: int = 200,
@@ -654,18 +692,35 @@ async def run_competitive(
     the gaps: clean commercial keyword gaps per competitor and the target's
     self-gap (what it ranks for vs what it should). ``analysis`` is left None ,
     a Claude session fills it on the saved snapshot.
+
+    Competitor selection, in priority order:
+      1. explicit ``competitors`` (what the caller passed),
+      2. ``seed_keywords`` , who ranks for the business's focus/priority
+         keywords (the right automatic method: AI + blockchain heads find AI +
+         blockchain specialists),
+      3. homepage-content discovery (weak; for tagline homepages it falls back
+         to ranked keywords),
+      4. keyword-overlap (weakest; giants dominate).
     """
     target = _norm(target)
     target_brand = _brand_info(target)
     provided = [c for c in (_norm(x) for x in (competitors or [])) if c and c != target]
+    seeds = [k.strip() for k in (seed_keywords or []) if k and k.strip()]
     auto_discovered = False
     discovery_method = "user_provided"
 
     async with DataForSEOAdapter(_ctx()) as dfs, KnowledgeGraphAdapter(_ctx()) as kg:
         if not provided:
-            provided, discovery_method = await _discover_competitors(
-                dfs, target, location_code=location_code, language_code=language_code
-            )
+            auto_discovered = True
+            if seeds:
+                provided = await _discover_competitors_from_keywords(
+                    dfs, target, seeds, location_code=location_code, language_code=language_code
+                )
+                discovery_method = "priority_keywords"
+            if not provided:
+                provided, discovery_method = await _discover_competitors(
+                    dfs, target, location_code=location_code, language_code=language_code
+                )
             if not provided:
                 discovery_method = "keyword_overlap_fallback"
                 disc = await dfs.competitors_domain(
@@ -679,7 +734,6 @@ async def run_competitive(
                     d for d in (_norm(i.get("domain")) for i in items)
                     if d and d != target
                 ][:5]
-            auto_discovered = True
 
         # Pass 1: visibility overview (cheap) for the target + all candidates.
         overview: dict[str, dict[str, Any]] = {}
