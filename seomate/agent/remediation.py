@@ -842,6 +842,126 @@ _add(RemediationSpec(
     verify="re-audit P3-28: linked as a Wikipedia source",
     automatable=False, risk="low", effort="campaign",
 ))
+# P3 backlink quality variables (measurable now the Backlinks sub is live;
+# improving them is off-site link-acquisition work, not an on-site edit).
+_add(RemediationSpec(
+    "P3-02", FixClass.OFFSITE, FixType.OFFSITE,
+    target="off-site link profile (referring-domain authority mix)",
+    concrete_change="Lift the share of high-authority referring domains: run digital PR + guest content aimed at DR-50+ industry sites so at least 5 referring domains sit at rank>=600 and the 'very low' bucket shrinks. The authority of the linker, not raw count, is the lever.",
+    required_inputs=["link-building effort (digital PR, guest content)", "list of target authority sites in the niche"],
+    verify="re-audit P3-02: >=5 referring domains at rank>=600, very-low bucket <70%",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-03", FixClass.OFFSITE, FixType.OFFSITE,
+    target="off-site link-acquisition pace",
+    concrete_change="Acquire links at a steady, organic pace rather than in bulk: a sudden spike of newly-discovered referring domains reads as paid-link activity. Profile age accrues over time; the actionable part is avoiding acquisition spikes and keeping earned links live.",
+    required_inputs=["sustained link-building cadence"],
+    verify="re-audit P3-03: median referring-domain age >=365d, <30% first-seen in last 90d",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P3-06", FixClass.OFFSITE, FixType.OFFSITE,
+    target=".edu / .gov / .ac / .mil referring domains",
+    concrete_change="Earn at least one gated-TLD link via targeted outreach: scholarship listings and resource pages on .edu sites, local-government supplier/partner directories, academic or industry-body partner pages. These TLDs are gated and rarely spam.",
+    required_inputs=["outreach effort", "a linkable asset (scholarship, resource, data)"],
+    verify="re-audit P3-06: >=1 backlink from an authoritative TLD",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-07", FixClass.OFFSITE, FixType.OFFSITE,
+    target="authority of individual linking pages",
+    concrete_change="Earn links from strong individual pages, not just strong domains: industry roundups, high-traffic articles, and resource pages that themselves carry authority. Pitch contributions/citations to pages at rank>=600.",
+    required_inputs=["digital PR / outreach effort"],
+    verify="re-audit P3-07: >=5 anchors from rank>=600 pages, <=60% from rank<150",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-10", FixClass.OFFSITE, FixType.OFFSITE,
+    target="link equity beyond the homepage",
+    concrete_change="Spread page-level authority off the homepage: earn deep backlinks to service/blog pages (most links default to the homepage), and internally link from high-equity pages to deeper ones so equity flows inward. The internal-linking half is session-doable; the deep-link half needs outreach.",
+    required_inputs=["deep-link outreach", "internal-link edit access (for the session-doable half)"],
+    verify="re-audit P3-10: homepage rank>=200 and >=25% of audited pages at rank>=100",
+    automatable=False, risk="low", effort="campaign",
+    depends_on=["P1-23", "P1-24"],
+))
+_add(RemediationSpec(
+    "P3-12", FixClass.OFFSITE, FixType.OFFSITE,
+    target="inbound anchor-text mix",
+    concrete_change="Shape the anchor profile through your own link-building: favour branded, naked-URL, and natural-phrase anchors so branded share is >=25%; never request exact-match commercial anchors (over-optimisation risk). You can only influence anchors on links you earn or request.",
+    required_inputs=["control of outreach/guest-post anchor choices"],
+    verify="re-audit P3-12: branded anchor share >=25% of sampled backlinks",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P3-15", FixClass.OFFSITE, FixType.OFFSITE,
+    target="spam-phrase / money-keyword anchors",
+    concrete_change="Keep money-keyword and spam-phrase anchors out of your own link-building, and do not buy links. Spam-phrase anchors that arrive from scraper/PBN spam are auto-discounted by Google; monitor them via P3-29 rather than chasing each one.",
+    required_inputs=["anchor discipline in outreach"],
+    verify="re-audit P3-15: zero spam-phrase anchors among earned links; no single anchor >5%",
+    automatable=False, risk="low", effort="ongoing",
+    depends_on=["P3-29"],
+))
+_add(RemediationSpec(
+    "P3-19", FixClass.OFFSITE, FixType.OFFSITE,
+    target="in-content (editorial) link placement",
+    concrete_change="Prioritise editorial in-content placements over boilerplate: guest articles and 'mentioned in' citations inside the body of a page pass more weight than footer/sidebar/directory links. Aim for >=60% of links inside article/section/main.",
+    required_inputs=["editorial outreach / guest content effort"],
+    verify="re-audit P3-19: >=60% of backlinks in main-content semantic elements",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-25", FixClass.OFFSITE, FixType.OFFSITE,
+    target="referring-domain retention (link loss)",
+    concrete_change="Stem link loss: monitor lost referring domains, reclaim them via outreach (broken-link rebuilds, ask for a re-link after a removal), and keep linkable assets live at stable URLs (301 anything you move). A shrinking profile signals decay.",
+    required_inputs=["lost-link monitoring", "outreach for reclamation"],
+    verify="re-audit P3-25: window-wide net referring-domain change >= -10%",
+    automatable=False, risk="low", effort="ongoing",
+))
+_add(RemediationSpec(
+    "P3-29", FixClass.OFFSITE, FixType.OFFSITE,
+    target="toxic backlink share (monitor, usually no action)",
+    concrete_change="Most low-quality spam (e.g. the seo-cartel-*.xyz scraper cluster) is auto-discounted by Google, so for a clean profile no action is needed. Do NOT disavow without a GSC manual action (see P3-30). Monitor toxic_pct over time; act only on a real manual action or clear negative-SEO harm.",
+    required_inputs=["periodic monitoring", "(only if a manual action) a disavow file"],
+    verify="re-audit P3-29: <=10% of sampled referring domains at spam_score>=60",
+    automatable=False, risk="low", effort="ongoing",
+    depends_on=["P3-30"],
+))
+_add(RemediationSpec(
+    "P3-32", FixClass.OFFSITE, FixType.OFFSITE,
+    target="linked brand mentions",
+    concrete_change="Grow linked brand mentions through digital PR and brand-building, and reclaim unlinked mentions (find brand mentions with no link, ask the author to link). A healthy share of branded, linked mentions signals genuine brand authority.",
+    required_inputs=["digital PR effort", "unlinked-mention monitoring"],
+    verify="re-audit P3-32: >=20% of sampled backlinks use branded anchors",
+    automatable=False, risk="low", effort="campaign",
+    depends_on=["P6-12"],
+))
+_add(RemediationSpec(
+    "P3-35", FixClass.OFFSITE, FixType.OFFSITE,
+    target="links from recognised authority sites",
+    concrete_change="Land links on recognised authority sites (~DR 50+): major industry publications, well-known resource hubs, and trade bodies, via digital PR, data stories, and expert contributions. Quality over quantity.",
+    required_inputs=["digital PR effort", "newsworthy assets (data, expert commentary)"],
+    verify="re-audit P3-35: >=3 referring domains at rank>=600",
+    automatable=False, risk="low", effort="campaign",
+    depends_on=["P6-16"],
+))
+_add(RemediationSpec(
+    "P3-36", FixClass.OFFSITE, FixType.OFFSITE,
+    target="guest-post-network reliance",
+    concrete_change="Reduce dependence on guest-post networks: diversify into editorial mentions, digital PR, and resource/citation links so guest-post-network links stay <=25% of the profile. Over-reliance on guest-post networks is a recognised manipulation pattern.",
+    required_inputs=["diversified link-building mix"],
+    verify="re-audit P3-36: <=25% of referring domains classified as guest-post networks",
+    automatable=False, risk="low", effort="campaign",
+))
+_add(RemediationSpec(
+    "P3-38", FixClass.OFFSITE, FixType.OFFSITE,
+    target="press-release-wire / article-directory links",
+    concrete_change="Stop using press-release wires and article-directory submissions for links (low-value and pattern-flagged). Pursue genuine earned coverage instead (real news pickups, editorial features), which P6-16 tracks.",
+    required_inputs=["shift PR strategy to earned coverage"],
+    verify="re-audit P3-38: zero referring domains matching press-release-wire patterns",
+    automatable=False, risk="low", effort="ongoing",
+    depends_on=["P6-16"],
+))
 
 
 # ── generic fallbacks by pillar (so the planner never drops a finding) ─────────
