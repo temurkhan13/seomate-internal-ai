@@ -200,6 +200,12 @@ _AGGREGATOR_DENYLIST = {
     "geeksforgeeks.org", "tutorialspoint.com", "wikihow.com", "forbes.com",
     "techcrunch.com", "gartner.com", "statista.com", "hubspot.com",
     "wordpress.com", "wix.com", "shopify.com", "bbc.co.uk", "bbc.com",
+    # Enterprise giants + Big-4 / strategy consultancies , they rank for every
+    # commercial head but are never a focused agency's real competitor.
+    "ibm.com", "oracle.com", "sap.com", "salesforce.com", "accenture.com",
+    "deloitte.com", "mckinsey.com", "bcg.com", "bain.com", "ey.com", "kpmg.com",
+    "pwc.com", "infosys.com", "cognizant.com", "capgemini.com", "wipro.com",
+    "tcs.com", "consultancy.uk", "consultancy.org",
 }
 
 
@@ -598,7 +604,7 @@ async def _discover_competitors_from_keywords(
     The focus keywords are the one genuinely strategic input; a session or the
     user supplies them. SERPing them is fully deterministic.
     """
-    freq: Counter[str] = Counter()
+    score: Counter[str] = Counter()
     for kw in [k for k in keywords if k][:12]:
         try:
             serp = await dfs.serp_google_organic(
@@ -606,11 +612,18 @@ async def _discover_competitors_from_keywords(
             )
         except Exception:  # noqa: BLE001 - one bad SERP shouldn't sink discovery
             continue
-        for d in set(_serp_domains(serp)):
-            if d == target or _is_denied(d):
+        seen: set[str] = set()
+        for i, d in enumerate(_serp_domains(serp)):  # SERP order, best first
+            if d == target or _is_denied(d) or d in seen:
                 continue
-            freq[d] += 1
-    return [d for d, _ in freq.most_common(top_n)]
+            seen.add(d)
+            # Position-weighted: a focused specialist ranking #2 for the focus
+            # keyword counts for far more than a giant that merely appears at #11.
+            # Pure appearance-counting surfaces the broad players (ibm, big dev
+            # shops) that rank for everything; this surfaces who actually wins
+            # the terms.
+            score[d] += depth - i
+    return [d for d, _ in score.most_common(top_n)]
 
 
 async def _discover_competitors(
