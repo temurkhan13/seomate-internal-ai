@@ -1,15 +1,21 @@
-"""Competitive analysis , you vs N competitors.
+"""Competitive intelligence , you vs N competitors, decision-grade.
 
-A separate product surface from the site audit. The audit assesses one site's
-intrinsic, fixable health; this COMPARES the site against competitors across
-visibility, keyword positioning, and (when backlink data is available) authority.
-It is deliberately not part of the 224-variable audit , competitive standing is
-an insight, not a pass/fail site-health item.
+This is NOT the site audit (which scores one site's intrinsic, fixable health).
+It profiles each competitor across the dimensions a business actually needs to
+make decisions , traffic, keyword footprint, backlink authority, GEO/entity
+presence , and surfaces THE GAPS:
 
-Uses the DataForSEO Labs endpoints already in the adapter (ranked_keywords,
-domain_rank_overview) plus competitors_domain for optional auto-discovery. The
-caller should pass the user's REAL business competitors for a meaningful result;
-auto-discovery (keyword-overlap) is a fallback starting set.
+  * Competitor gaps: the commercial, page-1/2 keywords rivals win that the
+    target does not (brand terms, off-vertical noise, and dead positions
+    filtered out, so the list is decisions, not noise).
+  * Self-gap: where the target ranks for the WRONG things (a stray
+    "<brand> photography" off a contact page) instead of its money keywords.
+
+Deterministic platform layer only. Every number here comes from DataForSEO
+(Labs + Backlinks), the Google Knowledge Graph, and a homepage crawl. The
+strategic read , what to DO about the gaps , is authored by a Claude session and
+attached to the saved run (the ``analysis`` field), never generated in this
+service. Platform gives the information; the session gives the judgment.
 """
 from __future__ import annotations
 
@@ -19,11 +25,14 @@ from typing import Any
 from uuid import uuid4
 
 from seomate.adapters import AdapterContext, DataForSEOAdapter
+from seomate.adapters.knowledge_graph import KnowledgeGraphAdapter
 from seomate.utils.cost_tracker import CostTracker
 from seomate.utils.html_fetch import fetch_html_pages
 
 UK_LOCATION = 2826
 _BIG = 10**6  # sentinel for "not ranking" when comparing positions
+_PAGE2 = 20  # pos <= 20 is Google page 1-2; a "gap" deeper than this is not one the competitor is winning
+_COMMERCIAL_INTENT = {"commercial", "transactional"}
 
 
 def _ctx() -> AdapterContext:
@@ -42,22 +51,51 @@ def _norm(domain: str | None) -> str:
     return d.removeprefix("www.").rstrip("/")
 
 
+# --------------------------------------------------------------------------- #
+# Response parsing
+# --------------------------------------------------------------------------- #
 def _overview_metrics(resp: dict) -> dict[str, Any]:
-    """organic keyword count + estimated traffic + domain rank from domain_rank_overview."""
+    """Traffic + keyword counts + position distribution from domain_rank_overview.
+
+    The overview already carries the organic position buckets (pos_1, pos_2_3,
+    pos_4_10 ...), so the whole "where do their rankings sit" distribution comes
+    free with the visibility call , no extra request.
+    """
     try:
         item = resp["tasks"][0]["result"][0]["items"][0]
     except (KeyError, IndexError, TypeError):
-        return {"organic_keywords": 0, "organic_traffic": 0, "domain_rank": None}
-    organic = (item.get("metrics") or {}).get("organic") or {}
+        item = {}
+    metrics = item.get("metrics") or {}
+    organic = metrics.get("organic") or {}
+    paid = metrics.get("paid") or {}
+
+    def _i(d: dict, k: str) -> int:
+        return int(d.get(k) or 0)
+
+    deep = sum(
+        _i(organic, k)
+        for k in (
+            "pos_21_30", "pos_31_40", "pos_41_50", "pos_51_60",
+            "pos_61_70", "pos_71_80", "pos_81_90", "pos_91_100",
+        )
+    )
     return {
-        "organic_keywords": int(organic.get("count") or 0),
-        "organic_traffic": round(float(organic.get("etv") or 0)),  # estimated traffic value
+        "organic_keywords": _i(organic, "count"),
+        "organic_traffic": round(float(organic.get("etv") or 0)),
+        "paid_keywords": _i(paid, "count"),
+        "paid_traffic": round(float(paid.get("etv") or 0)),
         "domain_rank": item.get("rank") or item.get("domain_rank"),
+        "position_distribution": {
+            "top3": _i(organic, "pos_1") + _i(organic, "pos_2_3"),
+            "pos_4_10": _i(organic, "pos_4_10"),
+            "pos_11_20": _i(organic, "pos_11_20"),
+            "pos_21_plus": deep,
+        },
     }
 
 
 def _ranked_map(resp: dict) -> dict[str, dict[str, Any]]:
-    """keyword -> {volume, position, url} from ranked_keywords."""
+    """keyword -> {volume, cpc, difficulty, intent, position, url} from ranked_keywords."""
     out: dict[str, dict[str, Any]] = {}
     try:
         items = resp["tasks"][0]["result"][0]["items"] or []
@@ -69,9 +107,14 @@ def _ranked_map(resp: dict) -> dict[str, dict[str, Any]]:
         if not keyword:
             continue
         info = kd.get("keyword_info") or {}
+        props = kd.get("keyword_properties") or {}
+        intent = (kd.get("search_intent_info") or {}).get("main_intent")
         serp = (it.get("ranked_serp_element") or {}).get("serp_item") or {}
         out[keyword] = {
             "volume": int(info.get("search_volume") or 0),
+            "cpc": round(float(info.get("cpc") or 0), 2),
+            "difficulty": props.get("keyword_difficulty"),
+            "intent": (intent or "").lower() or None,
             "position": serp.get("rank_absolute") or serp.get("rank_group"),
             "url": serp.get("relative_url") or serp.get("url"),
         }
@@ -80,6 +123,55 @@ def _ranked_map(resp: dict) -> dict[str, dict[str, Any]]:
 
 def _pos(v: Any) -> int:
     return int(v) if isinstance(v, (int, float)) and v else _BIG
+
+
+# --------------------------------------------------------------------------- #
+# Brand / intent classification (deterministic)
+# --------------------------------------------------------------------------- #
+def _brand_info(domain: str) -> dict[str, Any]:
+    """Brand tokens + root for a domain, used to strip brand keywords.
+
+    n-ix.com -> tokens {n, ix, nix}, root 'nix'
+    itransition.com -> tokens {itransition}, root 'itransition'
+    pixelettetech.com -> tokens {pixelettetech}, root 'pixelettetech'
+    """
+    root_raw = _norm(domain).split(".")[0].lower()
+    parts = [p for p in re.split(r"[^a-z0-9]+", root_raw) if p]
+    alpha = re.sub(r"[^a-z0-9]", "", root_raw)
+    tokens = set(parts)
+    if alpha:
+        tokens.add(alpha)
+    return {"tokens": tokens, "root": alpha}
+
+
+def _is_brand_kw(keyword: str, brand: dict[str, Any]) -> bool:
+    """True when the keyword is the brand's own name (or a clear variant).
+
+    Catches pure-brand queries ("n-ix", "n ix") and brand-adjacent ones where a
+    keyword token is a strong prefix of the brand root , so "pixelette
+    photography" registers as branded against pixelettetech.com even though the
+    domain root is the longer 'pixelettetech'.
+    """
+    words = [w for w in re.split(r"[^a-z0-9]+", keyword.lower()) if w]
+    if not words:
+        return False
+    tokens = brand["tokens"]
+    if set(words) <= tokens:  # every token is brand -> pure brand query
+        return True
+    root = brand["root"]
+    for w in words:
+        if len(w) < 5:
+            continue
+        if w in tokens or (root and (root.startswith(w) or w.startswith(root))):
+            return True
+    return False
+
+
+def _commercial(kw: dict[str, Any]) -> bool:
+    """A money keyword: it has CPC, or buyer-stage search intent."""
+    if (kw.get("cpc") or 0) > 0:
+        return True
+    return (kw.get("intent") or "") in _COMMERCIAL_INTENT
 
 
 # Giant aggregators / platforms / directories that rank for everything , they
@@ -118,7 +210,7 @@ def _serp_domains(resp: dict) -> list[str]:
 
 
 # Generic homepage section labels that are not services , dropped from the
-# content-derived competitor queries.
+# content-derived competitor queries and from the "what they sell" read.
 _GENERIC_HEADINGS = frozenset({
     "home", "about", "about us", "contact", "contact us", "services",
     "our services", "what we do", "who we are", "why choose us", "why us",
@@ -180,6 +272,248 @@ def _service_queries_from_html(html: str, target: str) -> list[str]:
     return out
 
 
+def _site_offerings(html: str | None) -> list[str]:
+    """What this site sells , its real, non-generic section headings (h1/h2)."""
+    if not html:
+        return []
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    out: list[str] = []
+    seen: set[str] = set()
+    for tag in soup.find_all(["h1", "h2"]):
+        t = re.sub(r"\s+", " ", tag.get_text(" ", strip=True)).strip()
+        tl = t.lower()
+        if not t or tl in _GENERIC_HEADINGS or len(t) > 60:
+            continue
+        if 2 <= len(t.split()) <= 7 and tl not in seen:
+            seen.add(tl)
+            out.append(t)
+    return out[:6]
+
+
+def _has_structured_data(html: str | None) -> bool:
+    return bool(re.search(r"application/ld\+json", html or "", re.I))
+
+
+# --------------------------------------------------------------------------- #
+# Profile assembly
+# --------------------------------------------------------------------------- #
+def _keyword_profile(m: dict[str, dict[str, Any]], brand: dict[str, Any]) -> dict[str, Any]:
+    """Classify a domain's ranked keywords: how many are branded vs commercial
+    vs informational, where they sit, and the top money keywords it actually wins.
+    """
+    branded = commercial = 0
+    top3 = p4_10 = p11_20 = deep = 0
+    money: list[dict[str, Any]] = []
+    for k, d in m.items():
+        b = _is_brand_kw(k, brand)
+        c = _commercial(d)
+        if b:
+            branded += 1
+        if c:
+            commercial += 1
+        p = _pos(d["position"])
+        if p <= 3:
+            top3 += 1
+        elif p <= 10:
+            p4_10 += 1
+        elif p <= 20:
+            p11_20 += 1
+        else:
+            deep += 1
+        if c and not b:
+            money.append({"keyword": k, **d})
+    money.sort(key=lambda x: x["volume"], reverse=True)
+    total = len(m)
+    return {
+        "total": total,
+        "branded": branded,
+        "commercial": commercial,
+        "informational": total - commercial,
+        "position_buckets": {
+            "top3": top3, "pos_4_10": p4_10, "pos_11_20": p11_20, "pos_21_plus": deep,
+        },
+        "top_commercial_keywords": money[:10],
+    }
+
+
+def _top_pages(m: dict[str, dict[str, Any]], n: int = 5) -> list[dict[str, Any]]:
+    """The domain's top pages by summed search volume of the keywords they rank."""
+    agg: dict[str, dict[str, Any]] = {}
+    for d in m.values():
+        u = d.get("url") or "/"
+        a = agg.setdefault(u, {"url": u, "keywords": 0, "volume": 0})
+        a["keywords"] += 1
+        a["volume"] += d.get("volume") or 0
+    return sorted(agg.values(), key=lambda x: x["volume"], reverse=True)[:n]
+
+
+def _backlink_profile(
+    summary: dict | None, refdoms: list[dict], anchors: list[dict]
+) -> dict[str, Any] | None:
+    """Authority profile from backlinks_summary + referring_domains + anchors.
+
+    None when the backlinks subscription returns nothing (the call failed or is
+    off) , the FE renders that as "not measured" rather than zeros.
+    """
+    if not summary:
+        return None
+    backlinks = int(summary.get("backlinks") or 0)
+    dofollow = int(summary.get("dofollow") or summary.get("backlinks_dofollow") or 0)
+    return {
+        "rank": summary.get("rank"),
+        "backlinks": backlinks,
+        "referring_domains": int(summary.get("referring_domains") or 0),
+        "referring_main_domains": int(summary.get("referring_main_domains") or 0),
+        "dofollow": dofollow,
+        "dofollow_ratio": round(dofollow / backlinks, 3) if backlinks else None,
+        "broken": int(summary.get("broken_backlinks") or 0),
+        "spam_score": summary.get("backlinks_spam_score"),
+        "top_referring_domains": [
+            {
+                "domain": d.get("domain"),
+                "rank": d.get("rank"),
+                "backlinks": d.get("backlinks"),
+            }
+            for d in (refdoms or [])[:10]
+            if d.get("domain")
+        ],
+        "top_anchors": [
+            {
+                "anchor": a.get("anchor"),
+                "backlinks": a.get("backlinks"),
+                "referring_domains": a.get("referring_domains"),
+            }
+            for a in (anchors or [])[:8]
+            if a.get("anchor")
+        ],
+    }
+
+
+def _geo_signal(entity: Any, html: str | None) -> dict[str, Any]:
+    """GEO / LLM-readiness signal: is the domain a recognised entity, and is its
+    content machine-extractable (structured data present)?
+    """
+    return {
+        "entity_recognized": entity is not None,
+        "entity_name": getattr(entity, "name", None),
+        "entity_types": [
+            t for t in (getattr(entity, "types", None) or ())
+            if t != "Thing"
+        ][:4],
+        "entity_description": getattr(entity, "description", None),
+        "entity_score": round(getattr(entity, "result_score", 0) or 0, 1) if entity else None,
+        "has_structured_data": _has_structured_data(html),
+    }
+
+
+def _match_entity(hits: list, brand: dict[str, Any], domain: str) -> Any:
+    """Pick a Knowledge Graph hit only if it plausibly IS this brand.
+
+    KG search is fuzzy and returns something for almost any query, so we only
+    accept a hit whose name shares a brand token, or whose url / sameAs points
+    at the domain. Prevents a random same-spelling entity being reported as "you
+    are a recognised entity".
+    """
+    root = brand["root"]
+    for h in hits or []:
+        name_tokens = {w for w in re.split(r"[^a-z0-9]+", (h.name or "").lower()) if w}
+        if name_tokens & brand["tokens"] or (root and root in (h.name or "").lower().replace(" ", "")):
+            return h
+        urls = " ".join([h.url or "", *(h.same_as or [])]).lower()
+        if domain and domain in urls:
+            return h
+    return None
+
+
+def _clean_gaps(
+    their: dict[str, dict[str, Any]],
+    our_kw: set[str],
+    comp_brand: dict[str, Any],
+    target_brand: dict[str, Any],
+    *,
+    top: int,
+) -> list[dict[str, Any]]:
+    """Commercial, page-1/2 keyword gaps , the decisions, with the noise removed.
+
+    Drops: keywords we already rank for; deep positions the competitor isn't
+    winning either (pos > 20); non-commercial/informational terms; and brand
+    queries (theirs or ours). What survives is "money keywords this competitor
+    wins on page 1-2 that you don't have".
+    """
+    gaps: list[dict[str, Any]] = []
+    for k, d in their.items():
+        if k in our_kw:
+            continue
+        if _pos(d["position"]) > _PAGE2:
+            continue
+        if not _commercial(d):
+            continue
+        if _is_brand_kw(k, comp_brand) or _is_brand_kw(k, target_brand):
+            continue
+        gaps.append({
+            "keyword": k,
+            "volume": d["volume"],
+            "cpc": d["cpc"],
+            "difficulty": d["difficulty"],
+            "intent": d["intent"],
+            "their_position": d["position"],
+            "their_url": d["url"],
+        })
+    gaps.sort(key=lambda x: x["volume"], reverse=True)
+    return gaps[:top]
+
+
+def _self_audit(
+    target: str,
+    our: dict[str, dict[str, Any]],
+    brand: dict[str, Any],
+    money_gaps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """The self-gap: what the target ACTUALLY ranks for vs what it should.
+
+    Surfaces the target's real keyword reality so misalignment is visible , the
+    brand-adjacent, non-commercial junk (a stray "<brand> photography") gets
+    flagged, and the count of genuine money keywords is laid bare next to the
+    commercial keywords competitors win that the target is missing.
+    """
+    ranked: list[dict[str, Any]] = []
+    off_profile: list[dict[str, Any]] = []
+    money_owned = 0
+    for k, d in sorted(our.items(), key=lambda kv: kv[1]["volume"], reverse=True):
+        b = _is_brand_kw(k, brand)
+        c = _commercial(d)
+        row = {
+            "keyword": k,
+            "volume": d["volume"],
+            "position": d["position"],
+            "intent": d["intent"],
+            "cpc": d["cpc"],
+            "branded": b,
+            "commercial": c,
+        }
+        ranked.append(row)
+        if c and not b:
+            money_owned += 1
+        # Brand-adjacent but non-commercial == ranking for the wrong thing
+        # (the "<brand> photography" case): you own it, but it sells nothing.
+        if b and not c and len(k.split()) >= 2:
+            off_profile.append(row)
+    return {
+        "total_ranked": len(our),
+        "money_keywords_owned": money_owned,
+        "branded": sum(1 for r in ranked if r["branded"]),
+        "informational": sum(1 for r in ranked if not r["commercial"]),
+        "ranked_keywords": ranked[:40],
+        "off_profile_keywords": off_profile[:15],
+        "missing_money_keywords": money_gaps,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Competitor discovery (deterministic fallback when none supplied)
+# --------------------------------------------------------------------------- #
 async def _discover_competitors(
     dfs: DataForSEOAdapter,
     target: str,
@@ -193,12 +527,12 @@ async def _discover_competitors(
 
     Reads the target's own homepage (title + headings) to learn what the
     business actually does, SERPs those service queries, and collects the
-    domains that recur , minus aggregators. Those are real competitors offering
-    the same services (a research database or a SaaS product never ranks for
-    "software development company", so giants drop out by construction).
+    domains that recur , minus aggregators. Falls back to ranked keywords when
+    the homepage can't be read. Returns ``(competitors, discovery_method)``.
 
-    Falls back to the site's ranked keywords only when the homepage can't be
-    read (e.g. a JS-only shell). Returns ``(competitors, discovery_method)``.
+    NOTE: deterministic discovery is a weak best-effort for low-footprint sites.
+    The right competitor set is the one a session/user supplies; this only seeds
+    the page when nothing was passed.
     """
     queries: list[str] = []
     method = "content_services"
@@ -212,8 +546,6 @@ async def _discover_competitors(
         queries = []
 
     if not queries:
-        # Fallback: the site's own ranked keywords. Weak for low-footprint sites
-        # (this is what surfaced giants like sciencedirect/atlassian before).
         method = "ranked_keywords_fallback"
         try:
             rk = await dfs.ranked_keywords(
@@ -241,6 +573,9 @@ async def _discover_competitors(
     return [d for d, _ in freq.most_common(top_n)], method
 
 
+# --------------------------------------------------------------------------- #
+# Entry point
+# --------------------------------------------------------------------------- #
 async def run_competitive(
     target: str,
     competitors: list[str] | None = None,
@@ -248,28 +583,28 @@ async def run_competitive(
     location_code: int = UK_LOCATION,
     language_code: str = "en",
     keyword_limit: int = 200,
-    gap_top: int = 25,
+    gap_top: int = 15,
 ) -> dict[str, Any]:
-    """Compare ``target`` against ``competitors`` (auto-discovered if not given).
+    """Decision-grade competitor intelligence for ``target`` vs ``competitors``.
 
-    Returns a structured report: per-domain visibility, and per-competitor the
-    keyword gaps (they rank, we don't), shared keywords where they out-rank us,
-    and how many shared keywords we win. Sorted by search volume.
+    For the target and each competitor, builds a full profile (traffic, keyword
+    profile, backlink authority, GEO/entity, what they sell, top pages), then
+    the gaps: clean commercial keyword gaps per competitor and the target's
+    self-gap (what it ranks for vs what it should). ``analysis`` is left None ,
+    a Claude session fills it on the saved snapshot.
     """
     target = _norm(target)
+    target_brand = _brand_info(target)
     provided = [c for c in (_norm(x) for x in (competitors or [])) if c and c != target]
     auto_discovered = False
     discovery_method = "user_provided"
 
-    async with DataForSEOAdapter(_ctx()) as dfs:
+    async with DataForSEOAdapter(_ctx()) as dfs, KnowledgeGraphAdapter(_ctx()) as kg:
         if not provided:
-            # Primary: content-based discovery (who offers the same services the
-            # site describes on its homepage, minus aggregators) , real peers.
             provided, discovery_method = await _discover_competitors(
                 dfs, target, location_code=location_code, language_code=language_code
             )
             if not provided:
-                # Last-resort fallback: keyword-overlap (weak; giants dominate).
                 discovery_method = "keyword_overlap_fallback"
                 disc = await dfs.competitors_domain(
                     target, location_code=location_code, language_code=language_code, limit=8
@@ -284,27 +619,33 @@ async def run_competitive(
                 ][:5]
             auto_discovered = True
 
-        # Pass 1: visibility (the cheap overview) for the target + all candidates.
+        # Pass 1: visibility overview (cheap) for the target + all candidates.
         overview: dict[str, dict[str, Any]] = {}
         for d in [target, *provided]:
             ov = await dfs.domain_rank_overview(
                 d, location_code=location_code, language_code=language_code
             )
-            m = _overview_metrics(ov)
-            m.update({"domain": d, "is_target": d == target})
-            overview[d] = m
+            overview[d] = _overview_metrics(ov)
 
-        # Drop auto-discovered competitors with no organic presence. A domain that
-        # ranked for one stray keyword (often an academic / edu page) but has zero
-        # ranked keywords overall is not a real business competitor , it only adds
-        # an empty 0/0 row. User-supplied competitors are always kept.
+        # Drop auto-discovered competitors with no organic presence (an academic
+        # page that ranked once is not a competitor). User-supplied stay.
         if auto_discovered:
             provided = [c for c in provided if overview[c]["organic_keywords"] > 0]
 
         domains = [target, *provided]
-        visibility: list[dict[str, Any]] = [overview[d] for d in domains]
 
-        # Pass 2: ranked keywords for the survivors only.
+        # Homepage crawl (one batch) , for "what they sell" + structured-data GEO.
+        urls = [f"https://{d}/" for d in domains]
+        try:
+            pages = await fetch_html_pages(urls, concurrency=4, timeout_seconds=15)
+        except Exception:  # noqa: BLE001
+            pages = {}
+        html_for: dict[str, str | None] = {}
+        for d in domains:
+            pg = pages.get(f"https://{d}/")
+            html_for[d] = pg.html if (pg and pg.fetch_error is None and pg.html) else None
+
+        # Pass 2: ranked keywords for each domain.
         ranked: dict[str, dict[str, dict[str, Any]]] = {}
         for d in domains:
             rk = await dfs.ranked_keywords(
@@ -312,25 +653,99 @@ async def run_competitive(
             )
             ranked[d] = _ranked_map(rk)
 
+        # Pass 3: backlink authority for each domain (fail-soft per call).
+        backlinks: dict[str, dict[str, Any] | None] = {}
+        for d in domains:
+            summary = None
+            refdoms: list[dict] = []
+            anchors: list[dict] = []
+            try:
+                resp = await dfs.backlinks_summary(d)
+                res = (resp.get("tasks") or [{}])[0].get("result") or []
+                if res and isinstance(res[0], dict):
+                    summary = res[0]
+            except Exception:  # noqa: BLE001
+                summary = None
+            try:
+                resp = await dfs.referring_domains(d, limit=25)
+                res = (resp.get("tasks") or [{}])[0].get("result") or []
+                if res and isinstance(res[0], dict):
+                    refdoms = res[0].get("items") or []
+            except Exception:  # noqa: BLE001
+                refdoms = []
+            try:
+                resp = await dfs.backlinks_anchors(d, limit=25)
+                res = (resp.get("tasks") or [{}])[0].get("result") or []
+                if res and isinstance(res[0], dict):
+                    anchors = res[0].get("items") or []
+            except Exception:  # noqa: BLE001
+                anchors = []
+            backlinks[d] = _backlink_profile(summary, refdoms, anchors)
+
+        # GEO entity recognition (fail-soft; skipped entirely if KG unconfigured).
+        entity_for: dict[str, Any] = {d: None for d in domains}
+        if getattr(kg, "is_configured", False):
+            for d in domains:
+                brand = _brand_info(d)
+                query = (brand["tokens"] and max(brand["tokens"], key=len)) or d
+                try:
+                    hits = await kg.search(query, limit=5)
+                    entity_for[d] = _match_entity(hits, brand, d)
+                except Exception:  # noqa: BLE001
+                    entity_for[d] = None
+
+    # ---- assemble profiles -------------------------------------------------
+    profiles: list[dict[str, Any]] = []
+    visibility: list[dict[str, Any]] = []
+    for d in domains:
+        ov = overview[d]
+        brand = target_brand if d == target else _brand_info(d)
+        kp = _keyword_profile(ranked[d], brand)
+        bl = backlinks[d]
+        profiles.append({
+            "domain": d,
+            "is_target": d == target,
+            "traffic": {
+                "organic_keywords": ov["organic_keywords"],
+                "organic_traffic": ov["organic_traffic"],
+                "paid_keywords": ov["paid_keywords"],
+                "paid_traffic": ov["paid_traffic"],
+                "domain_rank": ov["domain_rank"],
+            },
+            "position_distribution": ov["position_distribution"],
+            "keyword_profile": kp,
+            "backlinks": bl,
+            "geo": _geo_signal(entity_for[d], html_for[d]),
+            "site": {
+                "offerings": _site_offerings(html_for[d]),
+                "top_pages": _top_pages(ranked[d]),
+            },
+        })
+        visibility.append({
+            "domain": d,
+            "is_target": d == target,
+            "organic_keywords": ov["organic_keywords"],
+            "organic_traffic": ov["organic_traffic"],
+            "domain_rank": ov["domain_rank"],
+            "backlink_rank": (bl or {}).get("rank"),
+            "referring_domains": (bl or {}).get("referring_domains"),
+            "entity_recognized": bool(entity_for[d]),
+        })
+
+    # ---- gaps --------------------------------------------------------------
     our = ranked.get(target, {})
     our_kw = set(our)
     per_competitor: list[dict[str, Any]] = []
+    all_money_gaps: dict[str, dict[str, Any]] = {}
     for c in provided:
         their = ranked.get(c, {})
         their_kw = set(their)
-        gaps = sorted(
-            (
-                {
-                    "keyword": k,
-                    "volume": their[k]["volume"],
-                    "their_position": their[k]["position"],
-                    "their_url": their[k]["url"],
-                }
-                for k in (their_kw - our_kw)
-            ),
-            key=lambda x: x["volume"],
-            reverse=True,
-        )
+        comp_brand = _brand_info(c)
+        clean = _clean_gaps(their, our_kw, comp_brand, target_brand, top=gap_top)
+        for g in clean:
+            prev = all_money_gaps.get(g["keyword"])
+            if not prev or g["volume"] > prev["volume"]:
+                all_money_gaps[g["keyword"]] = g
         shared = their_kw & our_kw
         losing = sorted(
             (
@@ -347,17 +762,21 @@ async def run_competitive(
             reverse=True,
         )
         we_win = sum(1 for k in shared if _pos(our[k]["position"]) < _pos(their[k]["position"]))
-        per_competitor.append(
-            {
-                "domain": c,
-                "gap_count": len(their_kw - our_kw),
-                "shared_count": len(shared),
-                "we_win_shared": we_win,
-                "they_win_shared": len(losing),
-                "top_keyword_gaps": gaps[:gap_top],
-                "top_losing_keywords": losing[:gap_top],
-            }
-        )
+        per_competitor.append({
+            "domain": c,
+            "gap_count_raw": len(their_kw - our_kw),
+            "gap_count_clean": len(clean),
+            "shared_count": len(shared),
+            "we_win_shared": we_win,
+            "they_win_shared": len(losing),
+            "money_gaps": clean,
+            "top_losing_keywords": losing[:gap_top],
+        })
+
+    money_gaps_sorted = sorted(
+        all_money_gaps.values(), key=lambda x: x["volume"], reverse=True
+    )[:25]
+    self_audit = _self_audit(target, our, target_brand, money_gaps_sorted)
 
     return {
         "target": target,
@@ -366,6 +785,9 @@ async def run_competitive(
         "discovery_method": discovery_method,
         "location_code": location_code,
         "language_code": language_code,
+        "profiles": profiles,
         "visibility": visibility,
         "per_competitor": per_competitor,
+        "self_audit": self_audit,
+        "analysis": None,  # filled by a Claude session on the saved snapshot
     }
