@@ -9,7 +9,9 @@ from seomate.competitive import (
     _brand_info,
     _clean_gaps,
     _commercial,
+    _focus_terms,
     _is_brand_kw,
+    _kw_fits_focus,
     _match_entity,
     _self_audit,
     _service_queries_from_html,
@@ -134,6 +136,64 @@ def test_self_audit_page1_is_the_real_money_count():
     assert sa["money_keywords_owned"] == 0
     assert sa["page1_keywords"] == 0
     assert sa["total_ranked"] == 2
+
+
+# ─── strategic focus (fit-ranking, not volume-only) ─────────────────────────
+def test_focus_terms_strips_generic_words():
+    terms = _focus_terms(
+        ["ai development services", "blockchain development company", "smart contract"]
+    )
+    assert {"ai", "blockchain", "smart", "contract"} <= terms
+    for generic in ("development", "services", "company"):
+        assert generic not in terms
+    assert _focus_terms([]) == frozenset()
+    assert _focus_terms(None) == frozenset()
+
+
+def test_kw_fits_focus_whole_word_only():
+    focus = _focus_terms(["ai development", "blockchain"])
+    assert _kw_fits_focus("ai chatbot development", focus) is True
+    assert _kw_fits_focus("blockchain consultant", focus) is True
+    # the 2-char 'ai' must NOT match inside 'email' / 'retail'
+    assert _kw_fits_focus("email marketing", focus) is False
+    assert _kw_fits_focus("retail software", focus) is False
+    # no focus terms -> nothing fits (volume-only fallback)
+    assert _kw_fits_focus("ai development", frozenset()) is False
+
+
+def test_clean_gaps_focus_ranks_on_strategy_above_high_volume_generic():
+    their = {
+        "web design firms": {"volume": 4400, "cpc": 15.0, "difficulty": 20,
+                             "intent": "commercial", "position": 10, "url": "/w"},
+        "ai development services": {"volume": 320, "cpc": 30.0, "difficulty": 9,
+                                    "intent": "commercial", "position": 8, "url": "/a"},
+        "smart contract development": {"volume": 70, "cpc": 5.0, "difficulty": 4,
+                                       "intent": "commercial", "position": 6, "url": "/s"},
+    }
+    focus = _focus_terms(["ai development services", "blockchain development", "smart contract"])
+    gaps = _clean_gaps(
+        their, set(), _brand_info("rival.com"), _brand_info("pixelettetech.com"),
+        focus_terms=focus, top=10,
+    )
+    # on-strategy gaps lead even though the generic term has ~14x the volume
+    assert [g["keyword"] for g in gaps][:2] == [
+        "ai development services", "smart contract development",
+    ]
+    assert gaps[-1]["keyword"] == "web design firms"
+    assert gaps[0]["fit"] is True and gaps[-1]["fit"] is False
+
+
+def test_clean_gaps_without_focus_is_volume_only_unchanged():
+    their = {
+        "web design firms": {"volume": 4400, "cpc": 15.0, "difficulty": 20,
+                             "intent": "commercial", "position": 10, "url": "/w"},
+        "ai development services": {"volume": 320, "cpc": 30.0, "difficulty": 9,
+                                    "intent": "commercial", "position": 8, "url": "/a"},
+    }
+    gaps = _clean_gaps(their, set(), _brand_info("rival.com"), _brand_info("pixelettetech.com"), top=10)
+    # no focus -> pure volume sort, and nothing is marked fit
+    assert gaps[0]["keyword"] == "web design firms"
+    assert all(g["fit"] is False for g in gaps)
 
 
 # ─── Knowledge-Graph entity matching ────────────────────────────────────────

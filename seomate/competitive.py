@@ -486,12 +486,55 @@ def _match_entity(hits: list, brand: dict[str, Any], domain: str) -> Any:
     return None
 
 
+# --------------------------------------------------------------------------- #
+# Strategic focus , rank keyword gaps by fit to the business's priority themes,
+# not just raw search volume. Without this, a high-volume generic term ("web
+# design", 4,400) buries the on-strategy target ("ai development services", 320),
+# so the platform recommends the opposite of the strategy. The focus keywords are
+# the session/user's strategic input; their distinctive tokens define "on theme".
+# --------------------------------------------------------------------------- #
+_GENERIC_TOKENS = frozenset({
+    "development", "developer", "developers", "services", "service", "company",
+    "companies", "agency", "agencies", "solution", "solutions", "software",
+    "app", "apps", "application", "applications", "mobile", "web", "website",
+    "websites", "design", "designing", "designer", "custom", "build", "building",
+    "hire", "firm", "firms", "consulting", "consultant", "consultants",
+    "platform", "platforms", "system", "systems", "best", "top", "uk", "usa",
+    "us", "london", "near", "me", "the", "a", "an", "and", "for", "of", "to",
+    "in", "your", "with", "cost", "price", "pricing",
+})
+
+
+def _focus_terms(seeds: list[str] | None) -> frozenset[str]:
+    """Distinctive theme tokens from the focus keywords, generic agency words
+    stripped. e.g. ['ai development services', 'blockchain development', 'smart
+    contract'] -> {ai, blockchain, smart, contract}. These define which keyword
+    gaps are on-strategy. Empty when no seeds, so ranking falls back to
+    volume-only (backward compatible)."""
+    terms: set[str] = set()
+    for kw in seeds or []:
+        for tok in re.findall(r"[a-z0-9]+", (kw or "").lower()):
+            if len(tok) >= 2 and tok not in _GENERIC_TOKENS:
+                terms.add(tok)
+    return frozenset(terms)
+
+
+def _kw_fits_focus(keyword: str, focus_terms: frozenset[str]) -> bool:
+    """True if the keyword contains any focus theme token as a whole word.
+    Whole-word matching keeps the 2-char 'ai' from matching 'email' / 'retail'."""
+    if not focus_terms:
+        return False
+    kw = (keyword or "").lower()
+    return any(re.search(rf"\b{re.escape(t)}\b", kw) for t in focus_terms)
+
+
 def _clean_gaps(
     their: dict[str, dict[str, Any]],
     our_kw: set[str],
     comp_brand: dict[str, Any],
     target_brand: dict[str, Any],
     *,
+    focus_terms: frozenset[str] = frozenset(),
     top: int,
 ) -> list[dict[str, Any]]:
     """Commercial, page-1/2 keyword gaps , the decisions, with the noise removed.
@@ -519,8 +562,11 @@ def _clean_gaps(
             "intent": d["intent"],
             "their_position": d["position"],
             "their_url": d["url"],
+            "fit": _kw_fits_focus(k, focus_terms),
         })
-    gaps.sort(key=lambda x: x["volume"], reverse=True)
+    # On-strategy gaps first (fit), then by volume within each band. With no
+    # focus terms fit is always False, so this is a pure volume sort (unchanged).
+    gaps.sort(key=lambda x: (x["fit"], x["volume"]), reverse=True)
     return gaps[:top]
 
 
@@ -719,6 +765,7 @@ async def run_competitive(
     target_brand = _brand_info(target)
     provided = [c for c in (_norm(x) for x in (competitors or [])) if c and c != target]
     seeds = [k.strip() for k in (seed_keywords or []) if k and k.strip()]
+    focus_terms = _focus_terms(seeds)
     auto_discovered = False
     discovery_method = "user_provided"
 
@@ -871,10 +918,13 @@ async def run_competitive(
         their = ranked.get(c, {})
         their_kw = set(their)
         comp_brand = _brand_info(c)
-        clean = _clean_gaps(their, our_kw, comp_brand, target_brand, top=gap_top)
+        clean = _clean_gaps(
+            their, our_kw, comp_brand, target_brand,
+            focus_terms=focus_terms, top=gap_top,
+        )
         for g in clean:
             prev = all_money_gaps.get(g["keyword"])
-            if not prev or g["volume"] > prev["volume"]:
+            if not prev or (g["fit"], g["volume"]) > (prev["fit"], prev["volume"]):
                 all_money_gaps[g["keyword"]] = g
         shared = their_kw & our_kw
         losing = sorted(
@@ -904,13 +954,16 @@ async def run_competitive(
         })
 
     money_gaps_sorted = sorted(
-        all_money_gaps.values(), key=lambda x: x["volume"], reverse=True
+        all_money_gaps.values(),
+        key=lambda x: (x["fit"], x["volume"]),
+        reverse=True,
     )[:25]
     self_audit = _self_audit(target, our, target_brand, money_gaps_sorted)
 
     return {
         "target": target,
         "competitors": provided,
+        "seed_keywords": seeds,
         "auto_discovered": auto_discovered,
         "discovery_method": discovery_method,
         "location_code": location_code,
