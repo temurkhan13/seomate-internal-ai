@@ -122,6 +122,11 @@ class LlmAdapter(BaseAdapter):
             self._client = AsyncAnthropic(
                 api_key=self.settings.ANTHROPIC_API_KEY,
                 timeout=self.timeout_seconds,
+                # Explicit: the SDK owns retrying ITS transient errors
+                # (InternalServerError, APIConnectionError, APITimeoutError), which
+                # retry_transient's class-name allowlist deliberately does not cover.
+                # Relying on the SDK default would leave that layering accidental.
+                max_retries=2,
             )
         return self
 
