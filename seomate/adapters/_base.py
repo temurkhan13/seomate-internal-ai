@@ -33,7 +33,7 @@ import structlog
 from aiolimiter import AsyncLimiter
 from tenacity import (
     AsyncRetrying,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
@@ -224,17 +224,14 @@ def retry_transient(
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(max_attempts),
                 wait=_wait_strategy,
-                retry=retry_if_exception_type(Exception),  # filtered below
+                # The predicate does the filtering: transient errors retry,
+                # everything else (4xx caller errors, our own TypeErrors)
+                # fails fast on the first attempt.
+                retry=retry_if_exception(is_transient),
                 reraise=True,
             ):
                 with attempt:
-                    try:
-                        return await method(*args, **kwargs)
-                    except Exception as exc:  # noqa: BLE001
-                        if not is_transient(exc):
-                            # Re-raise without retrying (non-transient errors)
-                            raise
-                        raise
+                    return await method(*args, **kwargs)
             # Unreachable — AsyncRetrying always returns or raises
             raise RuntimeError("retry loop exited without result")
 
