@@ -1248,10 +1248,10 @@ async def capture_p6_19(
         },
     )
     rule_8 = _p6_19_schema_visible_match_rule(site)
+    llm_conclusive = bool(rule_8.evidence.get("conclusive", True))
 
     rules = [rule_1, rule_2, rule_3, rule_4, rule_5, rule_6, rule_7, rule_8]
-    # Hard rules: 1, 2, 3, 5, 6, 7, 8 (rule 8 now LLM-backed; deferred when
-    # LLM unavailable, so adding it doesn't change behaviour without a key).
+    # Hard rules: 1, 2, 3, 5, 6, 7, 8 (rule 8 is LLM-backed and conditional).
     overall_pass = (
         rule_1.passed
         and rule_2.passed
@@ -1259,7 +1259,10 @@ async def capture_p6_19(
         and rule_5.passed
         and rule_6.passed
         and rule_7.passed
-        and rule_8.passed
+        # Rule 8 is LLM-backed and only counts when it reached a conclusive
+        # verdict; otherwise it is excluded and the capture degrades to PARTIAL,
+        # so an LLM outage can never manufacture a clean PASS.
+        and (rule_8.passed if llm_conclusive else True)
     )
 
     return _build_record(
@@ -1267,8 +1270,15 @@ async def capture_p6_19(
         site=site,
         variable_id="P6-19",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED if overall_pass else CaptureStatus.FAILED,
+        # A deterministic failure is still a genuine failure, but we cannot claim
+        # a full PASS while an LLM-backed rule went unevaluated.
+        status=(
+            (CaptureStatus.PASSED if llm_conclusive else CaptureStatus.PARTIAL)
+            if overall_pass
+            else CaptureStatus.FAILED
+        ),
         value={
+            "schema_visible_match_conclusive": llm_conclusive,
             "pages_total": len(pages),
             "pages_with_org": len(pages_with_org),
             "pages_with_specific_type": len(pages_with_specific_type),
@@ -1526,7 +1536,13 @@ async def capture_p6_20(
 
 
 def _p6_19_schema_visible_match_rule(site: SiteData) -> RuleResult:
-    """P6-19 rule-8 backed by the shared ``schema_visible_match`` eval."""
+    """P6-19 rule-8 backed by the shared ``schema_visible_match`` eval.
+
+    Sets ``evidence["conclusive"]`` so the caller can distinguish a real verdict
+    from an absent or incomplete one. See the P1-22 twin in ``p1_schema.py``:
+    a failure is provable from partial data, the ABSENCE of failures is not, so
+    "no failing pages" only counts when every page returned a verdict.
+    """
     evals = site.llm_evaluations.get("schema_visible_match", {})
     if not evals:
         return RuleResult(
@@ -1536,8 +1552,12 @@ def _p6_19_schema_visible_match_rule(site: SiteData) -> RuleResult:
             evidence={
                 "method": "deferred_until_anthropic_key_set",
                 "evaluated_pages": 0,
+                "conclusive": False,
             },
-            notes="Pass-through when the LLM evaluation layer is unavailable.",
+            notes=(
+                "Not evaluated: the LLM evaluation layer was unavailable. Does not "
+                "count toward the verdict; the capture degrades to PARTIAL."
+            ),
         )
     failing = []
     errored = []
@@ -1556,6 +1576,9 @@ def _p6_19_schema_visible_match_rule(site: SiteData) -> RuleResult:
                     "issues": list(ev.issues)[:5],
                 }
             )
+    # A failure is definitive even with gaps; a clean sheet is only definitive
+    # when every page returned a verdict.
+    conclusive = bool(failing) or not errored
     return RuleResult(
         rule_id=8,
         rule_text="Schema content matches visible content (no hidden facts)",
@@ -1566,9 +1589,21 @@ def _p6_19_schema_visible_match_rule(site: SiteData) -> RuleResult:
             "pages_passed": passing,
             "pages_failed": len(failing),
             "pages_errored": len(errored),
+            "coverage_pct": round(
+                100.0 * (passing + len(failing)) / max(1, len(evals)), 1
+            ),
+            "conclusive": conclusive,
             "failing_pages": failing[:25],
         },
-        notes="LLM-evaluated via batched Claude Haiku calls at audit start.",
+        notes=(
+            "LLM-evaluated via batched Claude Haiku calls at audit start."
+            if conclusive
+            else (
+                f"Inconclusive: no failing page found, but {len(errored)} page(s) "
+                "returned no verdict, so absence of failure is unproven. Does not "
+                "count toward the verdict; the capture degrades to PARTIAL."
+            )
+        ),
     )
 
 

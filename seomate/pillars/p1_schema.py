@@ -209,9 +209,17 @@ def _build_record(
 def _schema_visible_match_rule(site: SiteData) -> RuleResult:
     """Build the P1-22 rule-7 / P6-19 rule-8 result from cached LLM evals.
 
-    Falls back to ``passed=True + notes='deferred'`` when the LLM
-    layer is not configured for this audit, matching the previous
-    deferred-rule behaviour.
+    Sets ``evidence["conclusive"]`` so the caller can tell a real verdict from
+    an absent or incomplete one. The rule cannot fail the variable for a missing
+    API key (that would penalise the site for our own outage), so when it is not
+    conclusive the caller degrades the capture to PARTIAL instead of PASSED.
+
+    Asymmetry that matters: a failure can be proven from partial data, but the
+    ABSENCE of failures cannot. If any page errored we do not know whether it
+    would have failed, so "no failing pages" is only conclusive when every page
+    returned a verdict. This is the exact defect that made a page which FAILED
+    on 2026-07-20 merely ERROR on 2026-07-22, silently flipping the variable to
+    passed with no site change.
     """
     evals = site.llm_evaluations.get("schema_visible_match", {})
     if not evals:
@@ -219,9 +227,14 @@ def _schema_visible_match_rule(site: SiteData) -> RuleResult:
             rule_id=7,
             rule_text="Schema content matches visible content (no hidden facts)",
             passed=True,
-            evidence={"method": "deferred_until_anthropic_key_set", "evaluated_pages": 0},
+            evidence={
+                "method": "deferred_until_anthropic_key_set",
+                "evaluated_pages": 0,
+                "conclusive": False,
+            },
             notes=(
-                "Pass-through when the LLM evaluation layer is unavailable. "
+                "Not evaluated: the LLM evaluation layer was unavailable. Does not "
+                "count toward the verdict; the capture degrades to PARTIAL. "
                 "Configure ANTHROPIC_API_KEY to activate per-page evaluation."
             ),
         )
@@ -243,6 +256,9 @@ def _schema_visible_match_rule(site: SiteData) -> RuleResult:
                     "rationale": ev.rationale,
                 }
             )
+    # A failure is definitive even with gaps; a clean sheet is only definitive
+    # when every page returned a verdict.
+    conclusive = bool(failing) or not errored
     return RuleResult(
         rule_id=7,
         rule_text="Schema content matches visible content (no hidden facts)",
@@ -253,10 +269,22 @@ def _schema_visible_match_rule(site: SiteData) -> RuleResult:
             "pages_passed": passing_count,
             "pages_failed": len(failing),
             "pages_errored": len(errored),
+            "coverage_pct": round(
+                100.0 * (passing_count + len(failing)) / max(1, len(evals)), 1
+            ),
+            "conclusive": conclusive,
             "failing_pages": failing[:25],
             "errored_pages": errored[:10],
         },
-        notes="LLM-evaluated via batched Claude Haiku calls at audit start.",
+        notes=(
+            "LLM-evaluated via batched Claude Haiku calls at audit start."
+            if conclusive
+            else (
+                f"Inconclusive: no failing page found, but {len(errored)} page(s) "
+                "returned no verdict, so absence of failure is unproven. Does not "
+                "count toward the verdict; the capture degrades to PARTIAL."
+            )
+        ),
     )
 
 
@@ -676,15 +704,19 @@ async def capture_p1_22(
     )
 
     rules = [rule_1, rule_2, rule_3, rule_4, rule_5, rule_6, rule_7, rule_8, rule_9]
-    # Hard rules for pass/fail: 1, 2, 3, 4, 6, 7 (rule 7 now LLM-backed; when
-    # LLM unavailable it's deferred=true so doesn't change behaviour).
+    # Hard rules for pass/fail: 1, 2, 3, 4, 6, 7 (rule 7 is LLM-backed).
+    # Rule 7 only counts when it reached a conclusive verdict. When it did not
+    # (LLM layer unavailable, or gaps that make "no failures" unprovable) it is
+    # excluded from the verdict and the capture degrades to PARTIAL below, so an
+    # LLM outage can never manufacture a clean PASS.
+    llm_conclusive = bool(rule_7.evidence.get("conclusive", True))
     overall_pass = (
         rule_1.passed
         and rule_2.passed
         and rule_3.passed
         and rule_4.passed
         and rule_6.passed
-        and rule_7.passed
+        and (rule_7.passed if llm_conclusive else True)
     )
 
     return _build_record(
@@ -692,8 +724,16 @@ async def capture_p1_22(
         site=site,
         variable_id="P1-22",
         captured_at=captured_at,
-        status=CaptureStatus.PASSED if overall_pass else CaptureStatus.FAILED,
+        # A deterministic failure is still a genuine failure. But we cannot claim
+        # a full PASS while an LLM-backed rule went unevaluated, so that case is
+        # PARTIAL, matching how the fully-LLM variables degrade.
+        status=(
+            (CaptureStatus.PASSED if llm_conclusive else CaptureStatus.PARTIAL)
+            if overall_pass
+            else CaptureStatus.FAILED
+        ),
         value={
+            "schema_visible_match_conclusive": llm_conclusive,
             "pages_total": len(pages),
             "blocks_total": blocks_total,
             "blocks_schema_org": blocks_schema_org,
