@@ -30,6 +30,15 @@ def _http_error(status: int) -> httpx.HTTPStatusError:
     return httpx.HTTPStatusError(f"HTTP {status}", request=req, response=resp)
 
 
+def _named_exc(class_name: str) -> BaseException:
+    """Build an exception whose ``type(exc).__name__`` is ``class_name`` without
+    importing any SDK — used to exercise is_transient's SDK class-name allowlist
+    branch ({RateLimitError, APIStatusError, ResourceExhausted}), which the httpx
+    isinstance branches never reach.
+    """
+    return type(class_name, (Exception,), {})("boom")
+
+
 def _decorated(raiser: Callable[[int], BaseException | None]):
     """Build a call-counting @retry_transient function.
 
@@ -114,3 +123,44 @@ async def test_persistent_transient_exhausts_and_reraises() -> None:
     with pytest.raises(httpx.HTTPStatusError):
         await fn()
     assert calls["n"] == 4  # max_attempts, not 1 (still retried) and not wrapped
+
+
+# ── SDK class-name branch of is_transient (llm.py / embeddings.py rely on it) ──
+
+
+@pytest.mark.asyncio
+async def test_sdk_ratelimit_class_name_is_retried() -> None:
+    """An SDK error whose class name is on the allowlist (e.g. anthropic
+    RateLimitError, a 429) is treated as transient and retried."""
+    fn, calls = _decorated(lambda n: _named_exc("RateLimitError") if n == 1 else None)
+    assert await fn() == "ok"
+    assert calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_sdk_resource_exhausted_name_is_retried() -> None:
+    """The google/gRPC ResourceExhausted class name is also allowlisted."""
+    fn, calls = _decorated(
+        lambda n: _named_exc("ResourceExhausted") if n == 1 else None
+    )
+    assert await fn() == "ok"
+    assert calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_unlisted_sdk_name_is_not_retried_currently() -> None:
+    """Documents CURRENT behaviour and makes the llm.py gap visible: an SDK
+    error whose class name is NOT on the allowlist — anthropic InternalServerError
+    (5xx/529), APIConnectionError, APITimeoutError — is not treated as transient
+    by @retry_transient and fails fast on the first attempt.
+
+    These anthropic transients are still retried by the AsyncAnthropic SDK's own
+    max_retries=2 (llm.py builds the client without overriding it), so this is a
+    modest resilience reduction, not "no retry". Whether to also add these names
+    to the _base allowlist is an open call for review — if it changes, this test
+    is the one to update.
+    """
+    fn, calls = _decorated(lambda n: _named_exc("InternalServerError"))
+    with pytest.raises(Exception):
+        await fn()
+    assert calls["n"] == 1
