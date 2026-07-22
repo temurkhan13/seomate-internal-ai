@@ -546,6 +546,44 @@ async def _gather_gsc(client: httpx.AsyncClient, domain: str, out_dir: Path) -> 
         return SourceResult("gsc", False, reason=str(e)[:80])
 
 
+async def _gather_ga4(client: httpx.AsyncClient, domain: str, out_dir: Path) -> SourceResult:
+    """GA4 engagement/acquisition via the Analytics Data API (owner data).
+
+    Optional and honestly-degrading like GSC: requires the same OAuth
+    refresh token (scope ``analytics.readonly``) plus ``GA4_PROPERTY_ID``
+    (numeric ``properties/NNN`` — not derivable from the domain). Never
+    gates a constitutional auditor variable; feeds the Strategist read.
+    """
+    cid, secret, refresh = _env("GOOGLE_OAUTH_CLIENT_ID"), _env("GOOGLE_OAUTH_CLIENT_SECRET"), _env("GOOGLE_OAUTH_REFRESH_TOKEN")
+    prop = _env("GA4_PROPERTY_ID")
+    if not (cid and secret and refresh):
+        return SourceResult("ga4", False, reason="GOOGLE_OAUTH_* not set (GA4 engagement data skipped; dependent vars unmeasurable)")
+    if not prop:
+        return SourceResult("ga4", False, reason="GA4_PROPERTY_ID not set (numeric 'properties/NNN'; GA4 skipped)")
+    prop_path = prop if prop.startswith("properties/") else f"properties/{prop}"
+    try:
+        tr = await client.post("https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": secret, "refresh_token": refresh, "grant_type": "refresh_token"}, timeout=30)
+        tok = tr.json().get("access_token")
+        if not tok:
+            return SourceResult("ga4", False, reason="token refresh failed")
+        H = {"Authorization": f"Bearer {tok}"}
+        url = f"https://analyticsdata.googleapis.com/v1beta/{prop_path}:runReport"
+        start, end = _days_ago(93), _days_ago(1)
+        chan_metrics = ["sessions", "engagedSessions", "engagementRate", "screenPageViews", "totalUsers", "averageSessionDuration"]
+        by_channel = {"dateRanges": [{"startDate": start, "endDate": end}], "dimensions": [{"name": "sessionDefaultChannelGroup"}], "metrics": [{"name": m} for m in chan_metrics], "limit": 100}
+        rc = await client.post(url, headers=H, json=by_channel, timeout=60)
+        r1 = rc.json()
+        if rc.status_code != 200 or "error" in r1:
+            msg = (r1.get("error", {}) or {}).get("message", f"HTTP {rc.status_code}")
+            return SourceResult("ga4", False, reason=f"runReport failed: {msg}"[:120])
+        by_page = {"dateRanges": [{"startDate": start, "endDate": end}], "dimensions": [{"name": "landingPagePlusQueryString"}], "metrics": [{"name": m} for m in ["sessions", "engagedSessions", "engagementRate", "screenPageViews"]], "limit": 250}
+        r2 = (await client.post(url, headers=H, json=by_page, timeout=60)).json()
+        _write(out_dir, "ga4.json", {"property": prop_path, "by_channel": r1, "by_landing_page": r2})
+        return SourceResult("ga4", True, summary={"property": prop_path, "channel_rows": len(r1.get("rows", [])), "landing_page_rows": len(r2.get("rows", []))})
+    except Exception as e:  # noqa: BLE001
+        return SourceResult("ga4", False, reason=str(e)[:120])
+
+
 def _days_ago(n: int) -> str:
     from datetime import timedelta
 
@@ -581,8 +619,9 @@ async def gather(domain: str, out_dir: str | Path, *, market_override: dict | No
         dfs = await _gather_dataforseo(client, domain, brand, market, keywords, out_dir)
         llm = await _gather_llm_citations(client, domain, brand, out_dir)
         gsc = await _gather_gsc(client, domain, out_dir)
+        ga4 = await _gather_ga4(client, domain, out_dir)
 
-    sources = [crawl_res, robots, psi, crux, wayback, kg, *dfs, llm, gsc]
+    sources = [crawl_res, robots, psi, crux, wayback, kg, *dfs, llm, gsc, ga4]
     total_cost = round(sum(s.cost_gbp for s in sources), 4)
     manifest = {
         "domain": domain,
