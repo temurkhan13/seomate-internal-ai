@@ -28,6 +28,12 @@ from urllib.parse import urlsplit
 from seomate.adapters.llm import LlmAdapter, LlmBatchResult, LlmNotConfigured
 from seomate.pillars._base import SiteData
 
+# Ceiling on the single-page repair pass (see ``run_evaluator``). A handful of
+# skipped rows is normal model behaviour and worth re-asking for; dozens means a
+# systemic failure that the completeness gate should surface instead of us
+# burning one API call per page chasing it.
+MAX_NO_ROW_RETRY_PAGES = 12
+
 
 # ─── Output dataclass ───────────────────────────────────────────────────────
 
@@ -99,12 +105,17 @@ async def run_evaluator(
     llm: LlmAdapter,
     *,
     concurrency: int = 3,
+    retry_missing: bool = True,
 ) -> dict[str, LlmEvaluation]:
     """Run one evaluator across all eligible pages in batches.
 
     Concurrency caps how many in-flight Claude calls we hold at once
     — Anthropic's free-tier rate limit is 50 RPM, so 3 in flight is
     comfortable. Returns ``{page_url: LlmEvaluation}``.
+
+    ``retry_missing`` re-asks, one page per call, for any page the model
+    skipped (returned no row for). Those gaps otherwise drop silently out of
+    the verdict and can invert a variable's result.
     """
     items = evaluator.collect_items(site)
     if not items:
@@ -153,6 +164,28 @@ async def run_evaluator(
         for i in range(0, len(items), evaluator.batch_size)
     ]
     await asyncio.gather(*[_process_batch(b) for b in batches])
+
+    # --- repair pass: re-ask for pages the model silently skipped -----------
+    # Rows are matched back to pages by page_index within a batch, so a model
+    # that omits one entry (or mis-numbers it) orphans that page. Those gaps
+    # are NOT harmless: a page that would have FAILED but returns no row simply
+    # vanishes from the verdict, which is exactly how P1-22 / P6-19 flipped to
+    # "passed" on 2026-07-22 with no site change. Re-ask one page per call,
+    # where index matching is unambiguous and truncation cannot drop a row.
+    # Capped: a large number of gaps means a systemic failure, which the
+    # completeness gate should flag rather than us spending 60 extra calls on.
+    if retry_missing:
+        missing = [
+            (url, payload)
+            for (url, payload) in items
+            if (ev := out.get(url)) is not None
+            and ev.passed is None
+            and (ev.error or "").startswith("evaluator returned no row")
+        ]
+        if missing:
+            await asyncio.gather(
+                *[_process_batch([m]) for m in missing[:MAX_NO_ROW_RETRY_PAGES]]
+            )
     return out
 
 

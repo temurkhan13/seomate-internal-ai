@@ -1506,10 +1506,18 @@ class AuditOrchestrator:
         # --- LLM evaluator coverage floor ---
         # When LLM is configured AND the eval phase wasn't deliberately
         # skipped, evaluators should produce SOME results. Zero results
-        # = silent LLM failure (the credit-balance regression).
+        # = silent LLM failure (the credit-balance regression). PARTIAL
+        # results matter too: a page that returns no verdict drops out of the
+        # rule silently, which can invert a variable (P1-22 / P6-19 flipped to
+        # "passed" on 2026-07-22 purely because a failing page errored).
         if site.llm_configured and not getattr(site, "llm_evaluations_skipped", False):
-            llm_results_total = sum(
-                len(per_eval) for per_eval in (site.llm_evaluations or {}).values()
+            per_evals = (site.llm_evaluations or {}).values()
+            llm_results_total = sum(len(per_eval) for per_eval in per_evals)
+            llm_no_verdict = sum(
+                1
+                for per_eval in per_evals
+                for ev in per_eval.values()
+                if getattr(ev, "passed", None) is None
             )
             if llm_results_total == 0:
                 anomalies.append(
@@ -1517,9 +1525,30 @@ class AuditOrchestrator:
                         "check": "llm_configured_but_zero_evaluations",
                         "severity": "warning",
                         "downstream_impact": (
-                            "LLM-dependent variables (~15 across P1/P4/P6) "
-                            "will UNMEASURABLE. Check Anthropic billing "
-                            "balance and ANTHROPIC_API_KEY workspace alignment."
+                            "The 19 fully-LLM variables (LLM_JUDGMENT_VARIABLES "
+                            "across P0/P1/P4/P6) will report UNMEASURABLE, and "
+                            "P1-22 + P6-19 will report PARTIAL because their "
+                            "schema-visible-match rule cannot be evaluated. "
+                            "Check Anthropic billing balance and "
+                            "ANTHROPIC_API_KEY workspace alignment."
+                        ),
+                    }
+                )
+            elif llm_no_verdict:
+                anomalies.append(
+                    {
+                        "check": "llm_partial_evaluation_coverage",
+                        "severity": "warning",
+                        "pages_without_verdict": llm_no_verdict,
+                        "pages_evaluated": llm_results_total,
+                        "downstream_impact": (
+                            f"{llm_no_verdict} of {llm_results_total} page "
+                            "evaluations returned no verdict after the repair "
+                            "pass. Affected pages drop out of their rule, so an "
+                            "absence of failures is unproven: P1-22 / P6-19 "
+                            "degrade to PARTIAL rather than PASSED. Treat any "
+                            "movement in LLM-backed variables this run as "
+                            "unconfirmed."
                         ),
                     }
                 )
