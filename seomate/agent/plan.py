@@ -6,6 +6,11 @@ prioritised fix plan: per-finding work orders grouped by who can action them
 (session / human / budget / owner / offsite), ordered so the cheap automatable
 wins surface first and dependencies come before dependents.
 
+Findings are gated by evidence weight per the taxonomy's Model B: Speculative
+variables are segregated into ``watchlist`` (measured and visible, but not work),
+and Contested variables stay actionable but are flagged ``requires_human_signoff``
+and held out of ``session_automatable``.
+
 This is the diagnostic -> execution handoff. The executor (a fixing session or a
 human) consumes the plan; nothing here makes changes.
 """
@@ -18,10 +23,57 @@ from uuid import UUID
 from sqlalchemy import select
 
 from seomate.agent.remediation import FixClass, get_spec, has_spec
+from seomate.data_contract import EvidenceWeight
 from seomate.storage import Audit, Capture, session_scope
 
 # statuses that warrant a fix (passed/n/a/unmeasurable do not)
 _ACTIONABLE = {"failed", "partial"}
+
+# ── Model B: evidence weight gates what we may DO with a finding ──────────────
+# Per o1-taxonomy.md "Operational Mapping (Model B)", the weight never gates
+# measurement, only operational behaviour:
+#
+#   Consensus   trusted scoring input, standard approval ladder
+#   Probable    same ladder, flagged for outcome tracking
+#   Contested   "surfaced as recommendations ... Never auto-approved without
+#               human sign-off" , so it stays actionable but can never be
+#               auto-shipped
+#   Speculative "Surfaces as a hypothesis on a watchlist. Does not drive
+#               recommendation generation directly."
+#
+# The planner previously ignored evidence_weight entirely (it read the column
+# and dropped it), so every failing Speculative variable was presented as work
+# the evidence does not support. Speculative findings are therefore segregated
+# into `watchlist` rather than filtered out: still measured, still visible,
+# just not presented as actionable work.
+_WATCHLIST_WEIGHTS = {EvidenceWeight.SPECULATIVE.value}
+_SIGNOFF_WEIGHTS = {EvidenceWeight.CONTESTED.value}
+
+
+def is_watchlist_only(evidence_weight: str | None) -> bool:
+    """True when the weight forbids the finding driving recommendations.
+
+    Speculative only. An unknown or missing weight is treated as actionable:
+    failing open here would silently hide real work, which is the worse error.
+    """
+    return evidence_weight in _WATCHLIST_WEIGHTS
+
+
+def requires_human_signoff(evidence_weight: str | None) -> bool:
+    """True when the taxonomy forbids auto-approving the fix (Contested)."""
+    return evidence_weight in _SIGNOFF_WEIGHTS
+
+
+def partition_by_evidence_weight(
+    orders: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split work orders into ``(actionable, watchlist)`` per Model B.
+
+    Order within each list is preserved, so an already-sorted input stays sorted.
+    """
+    actionable = [w for w in orders if not is_watchlist_only(w.get("evidence_weight"))]
+    watchlist = [w for w in orders if is_watchlist_only(w.get("evidence_weight"))]
+    return actionable, watchlist
 
 # ordering: cheapest, highest-leverage first
 _CLASS_ORDER = {
@@ -103,11 +155,17 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
             evidence = "; ".join(f"{k}={v}" for k, v in list(rule.items())[:3] if not isinstance(v, (list, dict)))
         else:
             evidence = ""
+        weight = f["evidence_weight"]
         work_orders.append(
             {
                 "variable_id": f["variable_id"],
                 "pillar": f["pillar"],
                 "diagnostic_status": f["status"],
+                "evidence_weight": weight,
+                # Contested: reputable sources disagree. Actionable, but the
+                # taxonomy forbids auto-approval , a human signs it off and the
+                # framing must be honest about what the change actually does.
+                "requires_human_signoff": requires_human_signoff(weight),
                 "evidence": evidence[:240],
                 "failing_rules": failing_rules,
                 "has_authored_spec": has_spec(f["variable_id"]),
@@ -128,12 +186,25 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
 
     work_orders.sort(key=sort_key)
 
+    # Model B split. Speculative findings are measured and stay visible, but the
+    # taxonomy forbids them driving recommendation generation, so they move to
+    # `watchlist` rather than being dropped: nothing disappears from the audit,
+    # it just stops being presented as work the evidence does not support.
+    work_orders, watchlist = partition_by_evidence_weight(work_orders)
+
     # group summary
     by_class: dict[str, int] = {}
     for w in work_orders:
         c = w["remediation"]["fix_class"]
         by_class[c] = by_class.get(c, 0) + 1
-    automatable_now = [w["variable_id"] for w in work_orders if w["remediation"]["automatable"]]
+    # Contested findings are never auto-approved, so they are held out of the
+    # ship-straight-away list even when their spec is technically automatable.
+    automatable_now = [
+        w["variable_id"]
+        for w in work_orders
+        if w["remediation"]["automatable"] and not w["requires_human_signoff"]
+    ]
+    needs_signoff = [w["variable_id"] for w in work_orders if w["requires_human_signoff"]]
     needs_authoring = [w["variable_id"] for w in work_orders if not w["has_authored_spec"]]
 
     return {
@@ -145,8 +216,11 @@ async def plan_fixes(audit_id: str | UUID) -> dict[str, Any]:
         "actionable_findings": len(work_orders),
         "by_fix_class": by_class,
         "session_automatable": automatable_now,
+        "requires_human_signoff": needs_signoff,
         "needs_remediation_authoring": needs_authoring,
         "work_orders": work_orders,
+        "watchlist_findings": len(watchlist),
+        "watchlist": watchlist,
     }
 
 
@@ -271,6 +345,9 @@ async def build_strategy(audit_id: str | UUID) -> dict[str, Any]:
         "is_latest_audit": plan["is_latest_audit"],
         "actionable_findings": plan["actionable_findings"],
         "by_fix_class": plan["by_fix_class"],
+        # Speculative findings never enter the waves (they are not work), but the
+        # count is surfaced so the strategy view does not look like it lost them.
+        "watchlist_findings": plan["watchlist_findings"],
         "positioning": positioning,
         "waves": waves,
     }
