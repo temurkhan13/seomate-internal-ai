@@ -4698,8 +4698,23 @@ async def capture_p1_14(
     Coverage metric: across pages with target keyword + H2/H3, what
     fraction have at least one matching subheading.
 
-    Pass: coverage >= 50% AND each "covered" page averages >= 1.0
-    matching tokens per subheading (very lax — Probable evidence weight).
+    Pass: coverage >= 50% (rule 1) AND the mean number of matched keyword
+    tokens PER PAGE is >= 1.0 (rule 2).
+
+    Rule 2 is stricter than it reads, and stricter than was intended. The
+    mean is taken over every page that has a target keyword and >=1
+    subheading, zero-overlap misses included — ``overlap_counts`` is
+    appended before the ``if overlap:`` branch below, not inside it — so it
+    is not an average over "covered" pages, and it is per page rather than
+    per subheading. Consequence: when a page's target keyword is a single
+    content token the maximum overlap is 1, so rule 2 demands near-total
+    coverage, a materially higher bar than rule 1's 50%.
+
+    Left exactly as-is on purpose. Changing a pass condition changes audit
+    semantics and breaks comparability with every prior audit, so the
+    threshold question is logged for a deliberate decision plus re-baseline
+    rather than corrected in place. This docstring previously described the
+    rule as "very lax", which was the opposite of what the code does.
     """
     captured_at = _now()
     target_map = _build_page_target_keywords(site)
@@ -4785,6 +4800,12 @@ async def capture_p1_14(
         if pages_with_subheadings
         else 0
     )
+    # Mean matched tokens per PAGE across every page with a target keyword and
+    # >=1 subheading, zero-overlap misses included (appended above before the
+    # `if overlap:` branch). For single-token target keywords the per-page max is
+    # 1, so rule 2 below is a near-total-coverage bar, stricter than rule 1's
+    # 50%. Deliberately unchanged: altering it would change audit semantics and
+    # break trend comparability. See the docstring.
     avg_overlap = (
         round(sum(overlap_counts) / len(overlap_counts), 2)
         if overlap_counts
