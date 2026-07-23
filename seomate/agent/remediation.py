@@ -964,6 +964,276 @@ _add(RemediationSpec(
 ))
 
 
+# --- previously unspecced (authored from the taxonomy + rule implementations) ---
+# These 8 fell through to the generic pillar fallback, which mis-routed three of
+# them (P1-35 as SESSION, P6-21 as HUMAN, P6-24 as HUMAN) and typed all of them
+# CONTENT. Every threshold in `verify` below is taken from the rule
+# implementation, not from the taxonomy prose, so the work order matches what the
+# extractor actually asserts.
+_add(RemediationSpec(
+    "P1-04", FixClass.SESSION, FixType.METADATA,
+    target="per-page <title> (CMS title field / template title builder) for the pages in the capture's value.misses_sample",
+    concrete_change=(
+        "Front-load the mapped target keyword's head term into the first 3 words of the title: rewrite "
+        "'[Brand] | [Descriptive]' and generic prefixes ('Welcome to...', 'Home -') to '[Keyword-led phrase] | [Brand]'. "
+        "Keep within ~50-60 chars (P1-02) and unique per page (P1-01). The rule's loose branch counts any keyword "
+        "content-token among the first 3 stopword-filtered title tokens, so moving the head noun ahead of the brand is "
+        "usually enough; do not stuff the full phrase where it reads badly. Draft a before/after title per missing page "
+        "and apply only the approved ones."
+    ),
+    required_inputs=["target keyword per page (P0-13 / ranked_keywords map)", "title field or template access",
+                     "the capture's value.misses_sample (url, keyword, title, first_3_tokens)",
+                     "brand string + title convention", "human sign-off on the proposed titles"],
+    verify="re-audit P1-04: coverage_pct >= 50 (keyword phrase at title start, or a keyword content-token within the first 3 title tokens)",
+    automatable=False, risk="low", depends_on=["P0-13", "P1-01", "P1-03"], effort="one-shot",
+    notes=(
+        "WATCHLIST: the taxonomy rates P1-04 Speculative and states it must not feed operational scoring. Never trade "
+        "title readability, uniqueness (P1-01), length (P1-02) or keyword inclusion (P1-03) to satisfy it; fix P1-03 "
+        "first and P1-04 usually falls out of the same rewrite. Titles are user-facing SERP copy: a session drafts, a "
+        "human approves. SOURCE-DEPENDENT: the per-page target keyword is whichever ranked_keywords term currently "
+        "ranks best, so coverage_pct drifts with no site change. Close on the shipped title diff, not a single "
+        "re-audit flip (require >=2 consistent runs). UNMEASURABLE here means missing ranked_keywords or page audits, "
+        "a P0-13 data problem rather than a title problem."
+    ),
+))
+_add(RemediationSpec(
+    "P1-14", FixClass.SESSION, FixType.CONTENT,
+    target="H2/H3 subheading text on the pages in the capture's value.misses_sample (page body, not templates)",
+    concrete_change=(
+        "For each missed page, rewrite at least one H2/H3 so it contains >=1 content-bearing token from that page's "
+        "ranked target keyword (a token that survives tokenising: alphanumeric, >1 char, not a stopword). Example: "
+        "target 'ecommerce web development' on a page with 'Our Process' / 'Why Choose Us' becomes 'Our Ecommerce "
+        "Development Process' / 'Why Choose Us for Web Development'. Work tokens in as real section labels, not "
+        "stuffed suffixes. Two rules taken from the code: (1) rule 2 averages matched tokens over every mapped page "
+        "including misses, so single-token target keywords effectively demand near-total coverage; treat the whole "
+        "miss list as in scope and land more than one token per page where the keyword has 2+ tokens. (2) Do NOT bulk-add "
+        "bare subheadings to the no_subheadings pages: they are currently excluded from the denominator, so adding "
+        "headings without a keyword token pulls them in as misses and lowers coverage_pct."
+    ),
+    required_inputs=["the failed capture (value.misses_sample, coverage_pct, avg_overlap_tokens_per_page, no_subheadings_count)",
+                     "target keyword per page (P0-13 / ranked_keywords map)", "CMS or repo access to page body content",
+                     "editorial sign-off on the reworded subheadings"],
+    verify="re-audit P1-14: coverage_pct >= 50 (pages whose H2/H3 share >=1 content-token with their target keyword) AND avg_overlap_tokens_per_page >= 1.0",
+    automatable=False, risk="low", depends_on=["P0-13"], effort="one-shot",
+    notes=(
+        "A session can compute which token to land on which page and draft every rewrite, but subheadings are "
+        "user-facing copy: ship as a per-URL diff for editorial approval, never published unreviewed. SOURCE-DEPENDENT: "
+        "both the denominator and the target keyword come from DataForSEO, so a page's target can change between runs; "
+        "close on the before/after heading list, not a single re-audit flip (>=2 consistent runs). Code trap: the "
+        "docstring claims rule 2 averages 'per subheading on covered pages', but the implementation takes the mean over "
+        "all pages with subheadings including zero-overlap misses, so the real bar can exceed the 50% headline. "
+        "UNMEASURABLE means absent ranked_keywords or page audits, i.e. a data-acquisition problem. Pairs with P1-03 "
+        "and P1-13 in the same editing pass."
+    ),
+))
+_add(RemediationSpec(
+    "P1-35", FixClass.HUMAN, FixType.CONTENT,
+    target="body copy of two failing sets in the capture: pages with top3_share >= 0.4 (term-dominated) and pages whose target keyword is absent from their top-10 TF-IDF terms",
+    concrete_change=(
+        "Work the two sets separately. (a) Term-dominated pages: the top-3 terms carry >=40% of all content tokens, so "
+        "cut repetition and add substance. Replace repeated brand/service-name mentions with natural variants, delete "
+        "duplicated boilerplate, and expand with genuinely distinct sections (process, scope and deliverables, a worked "
+        "example, FAQs) until the top-3 share falls below 40%. Filler that repeats the same terms will not move the "
+        "ratio. (b) Keyword-prominence misses: make the target keyword's tokens frequent and distinctive in the main "
+        "body (H1, at least one H2, the opening paragraph, then in context throughout) while cutting off-topic filler "
+        "that outranks them. Because IDF is computed in-site, a token appearing on every page scores low, so give the "
+        "page copy specific to that keyword rather than generic site-wide phrasing. Pages under 50 content tokens are "
+        "excluded from analysis entirely; bringing them in needs real content, not padding."
+    ),
+    required_inputs=["CMS / content edit access",
+                     "the capture payload (value.findings_sample, dominated_pct, kw_prominence_pct)",
+                     "per-page target keyword mapping", "subject-matter input for the expanded copy",
+                     "brand voice / editorial sign-off"],
+    verify="re-audit P1-35: dominated_pct <= 10 (pages whose top-3 terms are >=40% of tokens) AND kw_prominence_pct >= 70 (target-keyword token in the page's top-10 TF-IDF terms)",
+    automatable=False, risk="medium", depends_on=["P0-13", "P1-36"], effort="campaign",
+    notes=(
+        "HUMAN, not SESSION (the pillar fallback wrongly routed this to SESSION). A session can do the mechanical half "
+        "end-to-end (pull the failing pages, compute top-3 share and top-10 terms, draft the expansion), but the added "
+        "copy must state real things about the business that a session cannot invent: session drafts, human edits and "
+        "publishes. SOURCE-DEPENDENT via rule 2, whose target keyword comes from DataForSEO and whose denominator the "
+        "code itself flags as thin below 5 mapped pages. Also note IDF is computed over the audited site only, so "
+        "editing one page shifts every other page's term weights and a page can flip untouched. Close on the diffed "
+        "copy and recomputed terms, not a single re-audit flip (>=2 consistent runs). Rule 1 (dominated_pct) is stable "
+        "and source-independent, and is the honest same-day signal that a rewrite landed."
+    ),
+))
+_add(RemediationSpec(
+    "P2-13", FixClass.SESSION, FixType.CONFIG,
+    target="JavaScript build/bundle config + third-party script tags in the global template (homepage critical path; mobile is the binding strategy)",
+    concrete_change=(
+        "Cut main-thread blocking on the homepage until Lighthouse total-blocking-time is <=200 ms on both strategies: "
+        "(1) pull the PSI 'Reduce JavaScript execution time', 'Minimize main-thread work' and 'Reduce unused JavaScript' "
+        "audits and rank long tasks by attributed script URL; (2) move every third-party tag in that list (GTM, "
+        "analytics, chat/booking widget, pixels, A/B tooling) off the critical path via async/defer, delayed injection "
+        "on first interaction or requestIdleCallback, and delete tags with no owner; (3) for first-party bundles, "
+        "code-split so the homepage ships only its own route chunk, defer non-critical scripts, drop unused libraries, "
+        "and remove render-blocking synchronous <script> from <head>; (4) break remaining >50 ms long tasks by yielding "
+        "or moving heavy parsing to a Web Worker; (5) defer hydration of below-the-fold components."
+    ),
+    required_inputs=["repo / build config access (bundler + global template)",
+                     "third-party script inventory with an owner per tag",
+                     "sign-off to remove or delay marketing/analytics tags (business-owned, not dev-owned)",
+                     "GOOGLE_PSI_API_KEY set so the re-audit is measurable",
+                     "the capture's value.per_run lab_value / lab_band per strategy"],
+    verify="re-audit P2-13: worst lab band across captured PSI runs == 'good' (total-blocking-time <= 200 ms on every run, mobile and desktop); interim milestone is no run in the 'poor' band (< 600 ms)",
+    automatable=False, risk="medium", depends_on=["P2-30", "P2-32"], effort="one-shot",
+    notes=(
+        "SOURCE-DEPENDENT (PSI lab). TBT is a single throttled lab run and moves on its own with network variance and "
+        "simulated throttling, and the gate is the WORST of the mobile+desktop runs, so a borderline site can change "
+        "band with no code change. Close on the evidence of the change (scripts actually deferred/removed, long-task "
+        "count and total main-thread time down in the trace) plus >=2 consistent runs; never on a single flip. "
+        "automatable=False because a session can write the defer/code-split changes but deleting or delaying marketing "
+        "tags can break attribution and consent flows and needs a named owner's approval. Sequence after P2-30 and "
+        "P2-32, which remove some of the same payload. TBT is the lab proxy for P2-09 (INP), so this is the actionable "
+        "lever for INP, but INP lags by the CrUX 28-day window and cannot be verified in the same session. UNMEASURABLE "
+        "means a missing PSI key or failed fetch, not a slow site."
+    ),
+))
+_add(RemediationSpec(
+    "P4-02", FixClass.HUMAN, FixType.CONTENT,
+    target="article/page templates (JSON-LD dateModified + head meta + visible updated line) and the stale pages in the capture's value.page_findings",
+    concrete_change=(
+        "Two parts. (1) Extractability, which fixes rule 1: emit a machine-readable modification date on every "
+        "indexable page, namely dateModified (plus datePublished) in the Article/WebPage JSON-LD, "
+        "<meta property='article:modified_time'>, and a visible <time datetime='YYYY-MM-DD'>Last updated</time> line, "
+        "so a date resolves on the pages currently showing age_days: null. (2) Freshness, which fixes rules 2-4: sort "
+        "value.page_findings by age_days descending and materially refresh every page over 730 days old (figures, "
+        "statistics, year stamps, screenshots, pricing, dead links, superseded claims), bumping dateModified only where "
+        "content actually changed; retire (410) or redirect (301) stale pages not worth refreshing so they leave the "
+        "crawl set. Refresh enough of the tail to bring the median under 365 days, the >730-day share under 30% of "
+        "dated pages, and the 75th percentile to <=730 days."
+    ),
+    required_inputs=["site repo / template access (JSON-LD, head meta, article layout)",
+                     "CMS access to the stale pages",
+                     "the capture's value.page_findings (per-URL age_days) and undated_count",
+                     "a subject-matter reviewer to verify refreshed facts before publication",
+                     "a decision on which stale pages to retire vs refresh"],
+    verify="re-audit P4-02: all 4 rules pass, i.e. a date is extractable on >=50% of fetched pages AND median_age_days <= 365 AND stale (>730d) share < 30% of dated pages AND p75_age_days <= 730",
+    automatable=False, risk="medium", depends_on=["P1-41"], effort="ongoing",
+    notes=(
+        "Split-nature fix: part 1 (date markup in templates) is genuinely session-automatable and is the same change "
+        "P1-41 asks for, so do it first; it alone can flip rule 1 and gives the other three rules a denominator. Part 2 "
+        "is HUMAN because moving the median requires real editorial updates to real facts. HARD GUARDRAIL: never bump "
+        "dateModified or the visible updated date without a corresponding content change. A date-only bump would flip "
+        "rules 2-4 while the content stays abandoned, which is date-gaming rather than remediation and is exactly what "
+        "P1-41 warns against. Risk is medium because it touches every page template and republishes much of the "
+        "archive. Retiring or redirecting dead pages is a legitimate lever: it shrinks the stale numerator as well as "
+        "refreshing does. Not source-dependent, so the re-audit is deterministic. Ongoing: the median drifts back past "
+        "365 days without a standing refresh cadence (pairs with P4-01 and P6-23)."
+    ),
+))
+_add(RemediationSpec(
+    "P6-14", FixClass.HUMAN, FixType.MEDIA,
+    target="brand YouTube channel (owned) + the on-site pages that embed the resulting videos",
+    concrete_change=(
+        "Stand up a branded video presence so a video-host URL ranks for the brand-name query: (1) claim and complete an "
+        "owned YouTube channel under the exact brand name used in the audit, with the site URL as primary link; "
+        "(2) publish 2-3 videos of >=5 minutes on core brand/service topics (a founder explainer, a service walkthrough, "
+        "a client-outcome piece are the cheapest formats); (3) title each '<Brand> - <topic>' and put the brand name and "
+        "site URL in the first two lines of the description with a timestamped outline below; (4) upload a corrected "
+        "SRT/VTT caption track rather than relying on auto-captions, and paste the transcript into the description or an "
+        "on-site transcript block; (5) embed each video on the matching service/blog page and emit VideoObject JSON-LD "
+        "with name, description, thumbnailUrl, uploadDate, duration, contentUrl/embedUrl and transcript populated; "
+        "(6) link the channel from the site and add it to Organization sameAs. Steps 5 and 6 ship immediately from the "
+        "repo; steps 1-4 need real recorded media and brand voice."
+    ),
+    required_inputs=["owner access to (or authority to create) the brand YouTube channel",
+                     "recorded video assets, >=5 min each",
+                     "brand-approved titles/descriptions and a corrected transcript per video",
+                     "repo or CMS access to embed video and emit VideoObject JSON-LD",
+                     "the capture's value.brand_query so titles target the same string the rule scans"],
+    verify="re-audit P6-14: the brand-name SERP contains >=1 organic/video/top_stories result on a known video host (youtube.com, youtu.be, vimeo.com, wistia, loom.com, twitch.tv, dailymotion.com) OR a video/video_pack SERP feature is present",
+    automatable=False, risk="low", depends_on=["P6-19"], effort="campaign",
+    notes=(
+        "SOURCE-DEPENDENT: the pass is computed entirely from the prefetched DataForSEO brand-name SERP, so it moves "
+        "with SERP volatility and with which seed query resolved as the brand SERP; no brand SERP means UNMEASURABLE, "
+        "not FAILED. Close on the evidence of the change (channel live, videos published with captions, VideoObject "
+        "shipped, video URL indexed) and accept the audit flip only after >=2 consistent runs. Split the work honestly: "
+        "a session CAN ship the VideoObject JSON-LD, the on-site transcript block, the channel links and the "
+        "Organization sameAs entry, and can DRAFT titles, descriptions and transcript cleanups for review, but it "
+        "cannot record video or approve brand-facing copy, so the variable as a whole is HUMAN. The implementation is a "
+        "proxy: it only tests whether a video-host URL surfaces on the brand SERP, so duration, transcript accuracy, "
+        "engagement, channel authority and VideoObject on embeds are unmeasured today. Do the full job anyway, since "
+        "those are what actually feed the AI corpora, and a shell channel with one thin video could flip the rule "
+        "without earning the signal."
+    ),
+))
+_add(RemediationSpec(
+    "P6-21", FixClass.SESSION, FixType.CONTENT,
+    target="article-like pages only (URL path containing /blog/, /news/, /article/, /post/, /insights/, /guide or /learn) plus the article body template that renders their H2 sections",
+    concrete_change=(
+        "Work the per-page list in the capture's value.section_findings_sample. (1) Any article page with h2_count == 0 "
+        "needs real H2 subheadings segmenting the body into topical sections; rule 1 fails on a single such page. "
+        "(2) Split each section over 800 words at its natural sub-topic boundary (or promote existing H3s to H2) so each "
+        "lands in the 100-800 word window; merge or genuinely expand sections under 100 words, without padding. "
+        "(3) Respect the extractor's DOM assumption: it sums text only from the H2's next siblings until the next H2, so "
+        "section prose must sit as siblings of the H2 under the same parent. If the template wraps each section in a "
+        "container that breaks that sibling chain, the walk reads ~0 words and every section scores short no matter how "
+        "much real content exists; fix the wrapper first. (4) While editing, satisfy the deferred semantic rules too: "
+        "open each section with a sentence stating its claim, remove load-bearing 'as discussed above' back-references, "
+        "define specialist terms inline on first use, introduce lists and tables with a framing sentence, and move "
+        "sidebars and related-post blocks into <aside> outside the main flow."
+    ),
+    required_inputs=["CMS or repo content-edit access to the article pages",
+                     "article body template access (to fix section DOM nesting if sections read empty)",
+                     "the capture's value.section_findings_sample (url, h2_count, section_word_counts, chunk_ratio)",
+                     "an editor to approve the split, merge and expansion copy"],
+    verify="re-audit P6-21: every article-like page has >=1 H2 AND >=50% of eligible article pages have >=50% of their H2 sections between 100 and 800 words (chunk_ratio >= 0.5)",
+    automatable=False, risk="medium", depends_on=["P6-01"], effort="one-shot",
+    notes=(
+        "SESSION, not HUMAN (the pillar fallback wrongly routed this to HUMAN). A session can compute exact per-section "
+        "word counts and propose split/merge points mechanically, but the prose itself is editorial, so it ships as a "
+        "drafted diff for review rather than published unreviewed. Risk is medium because splitting or merging H2s "
+        "changes heading anchor IDs and can break inbound deep links and in-page ToC fragments; preserve or redirect "
+        "existing anchors. Two implementation traps: rule 1 is all-or-nothing across every eligible page, so one legacy "
+        "post with no H2 fails the variable however good the rest of the corpus is; and the DOM sibling walk means a "
+        "template nesting problem, not the writing, can be the real cause. NOT source-dependent and not LLM-scored "
+        "today, so the re-audit flip is deterministic and one clean run is sufficient evidence, unlike most of this "
+        "batch. The taxonomy's semantic rules are hard-coded passed pending the H1c section-semantics evaluator; doing "
+        "that work now costs little and pre-empts a regression when it lands."
+    ),
+))
+_add(RemediationSpec(
+    "P6-24", FixClass.OFFSITE, FixType.OFFSITE,
+    target="the off-site citation/link profile: the mix of external domains and source types referencing the brand, not the site itself",
+    concrete_change=(
+        "Diversify the referring-source pool against the three scored rules, using the capture's value payload as the "
+        "worklist. (1) Domain count: if referring_main_domains < 50, run a citation-acquisition campaign (digital PR, "
+        "guest content, partner and client pages, relevant directories) to clear 50 distinct referring main domains. "
+        "(2) Source-type gaps: diff value.source_type_distribution against the nine named buckets and target the missing "
+        "ones with placements the classifier actually recognises, e.g. forum (genuine Reddit/Quora/StackExchange "
+        "references), directory_review (Clutch, G2, Trustpilot, Capterra, GoodFirms), social (LinkedIn/YouTube/X brand "
+        "properties linking back), industry_publication (contributed posts on recognised trade outlets), wikipedia (via "
+        "Wikidata first, see P6-11). Four named buckets with >=1 domain clears rule 2, but aim for >=2 per bucket so the "
+        "count survives sample churn. (3) Concentration: if the top domain exceeds 15% of sampled backlinks, dilute it "
+        "by ADDING independent domains and by removing sitewide/footer placements at the source where you control them. "
+        "Never disavow to game the ratio, and do not chase the press_release bucket as a shortcut: newswire syndication "
+        "inflates one domain and pushes rule 3 the wrong way."
+    ),
+    required_inputs=["active DataForSEO Backlinks subscription (UNMEASURABLE without it)",
+                     "the failed capture's value payload (source_type_distribution, distinct_types_count, total_main_domains, top_domain, top_concentration_pct)",
+                     "PR / outreach capacity or agency budget for placements",
+                     "account ownership to claim directory and review profiles",
+                     "brand fact sheet / press assets for pitches",
+                     "control over any sitewide or footer links causing the concentration"],
+    verify="re-audit P6-24: referring_main_domains >= 50 (profile-wide) AND >= 4 distinct named source-type buckets present in the referring-domain sample excluding 'other' AND the top single referring domain <= 15.0% of the sample's backlinks",
+    automatable=False, risk="medium", depends_on=["P3-01", "P3-09", "P6-11", "P6-12", "P6-16"], effort="campaign",
+    notes=(
+        "OFFSITE, not HUMAN (the pillar fallback wrongly routed this to HUMAN): the placements are third-party editorial "
+        "decisions and no session can execute them end-to-end. A session CAN do the full gap analysis, target list, "
+        "outreach drafts and profile copy for human review and sending. SOURCE-DEPENDENT (DataForSEO Backlinks): rules 2 "
+        "and 3 are computed over a top-N sample (default 100), so the distinct-type count and the concentration "
+        "percentage move run-to-run as sample composition churns even with no off-site change, and a bucket held by "
+        "exactly one domain can drop out and flip rule 2 on its own. Rule 1 is the only profile-wide, stable rule. Close "
+        "on the named new referring domains and the buckets they land in, not a single re-audit flip (>=2 consistent "
+        "runs). Scope caveat: the taxonomy defines 6 rules but only 3 are scored, so geographic spread, mention-context "
+        "diversity and recency are NOT evaluated; do not report a pass as full citation diversity. Classifier caveat: "
+        "source typing is coarse first-match substring matching, so a legitimate trade publication absent from the "
+        "pattern list scores as 'other' and does nothing for rule 2."
+    ),
+))
+
+
 # ── generic fallbacks by pillar (so the planner never drops a finding) ─────────
 _PILLAR_FALLBACK_CLASS = {
     "P0": FixClass.HUMAN,    # relevance/keyword strategy
