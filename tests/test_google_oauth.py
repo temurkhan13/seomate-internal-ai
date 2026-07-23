@@ -83,3 +83,42 @@ def test_adapters_report_unconfigured() -> None:
     assert gsc.is_configured() is False
     assert gbp.is_configured() is False
     assert gsc.name == "gsc" and gbp.name == "gbp"
+
+
+@pytest.mark.asyncio
+async def test_access_token_retries_transient_disconnect() -> None:
+    """A transient RemoteProtocolError on the token endpoint (the exact
+    failure observed live) is retried, not surfaced to the caller."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.RemoteProtocolError(
+                "Server disconnected without sending a response.", request=request
+            )
+        return httpx.Response(200, json={"access_token": "tok-after-retry", "expires_in": 3600})
+
+    transport = httpx.MockTransport(handler)
+    m = GoogleOAuthManager(_configured())
+    async with httpx.AsyncClient(transport=transport) as client:
+        tok = await m.access_token(client)
+    assert tok == "tok-after-retry"
+    assert calls["n"] == 2  # failed once (transient), retried, then succeeded
+
+
+@pytest.mark.asyncio
+async def test_access_token_does_not_retry_4xx() -> None:
+    """A 400 (e.g. invalid_grant) is a caller error — raised immediately, never retried."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(400, json={"error": "invalid_grant"})
+
+    transport = httpx.MockTransport(handler)
+    m = GoogleOAuthManager(_configured())
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            await m.access_token(client)
+    assert calls["n"] == 1  # 4xx not retried
